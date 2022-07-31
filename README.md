@@ -4,9 +4,13 @@
 
 ### 说明
 
->Mysql不严谨，养成写sql语句好习惯，下文皆为sql列子，需执行寻求其含义。
+>Mysql不严谨；
+>
+>养成写sql语句好习惯，下文皆为sql列子，需执行寻求其含义；
+>
+>字符和日期用单引号。
 
-### 第三章
+### 第三章 基本SELECT
 
 #### SELECT使用
 
@@ -72,7 +76,7 @@ SELECT * FROM employees WHERE department_id = 90;
 SELECT * FROM employees WHERE last_name = 'King';
 ```
 
-#### 第三章课后练习
+#### 课后练习
 
 * 查询员工12个月的工资总和，并起别名为ANNUAL SALARY
 
@@ -111,7 +115,7 @@ SELECT * FROM employees WHERE last_name = 'King';
   ```
 
 
-### 第四章
+### 第四章 运算符
 
 #### 算术运算符
 
@@ -275,7 +279,7 @@ SELECT 4 >> 1, 4 << 1, 5 >> 1 FROM DUAL
 SELECT 10 & ~1 FROM DUAL;
 ```
 
-#### 第四章课后练习
+#### 课后练习
 
 * 选择工资不在5000到12000的员工的姓名和工资
 
@@ -338,5 +342,101 @@ SELECT last_name, job_id, department_id FROM employees WHERE department_id BETWE
 
 ```sql
 SELECT last_name, salary, manager_id FROM employees WHERE manager_id IN (100, 101, 110);
+```
+
+### 第五章 排序与分页
+
+#### 排序
+
+> 如果没有使用排序操作，默认情况下查询返回的数据是按照添加数据顺序显示的
+
+```sql
+#按照salary从高到低的顺序显示员工信息
+#使用ORDER BY 对查询到的数据进行排序操作
+#默认排序从低到高，升序ASC，降序DESC
+#ORDER BY 后没有显示指明排序方式，默认按照升序排列
+SELECT employee_id, last_name, salary FROM employees ORDER BY salary DESC;
+
+SELECT employee_id, salary, salary * 12 annual_sal FROM employees ORDER BY annual_sal;
+#列的别名只能在ORDER BY中使用，不能在WHERE中使用
+SELECT employee_id, salary, salary * 12 annual_sal FROM employees WHERE annual_sal > 81600;#错误语法
+
+#WHERE 需要声明在FROM后，ORDER BY前
+SELECT employee_id, salary #再执行这句
+FROM employees WHERE department_id IN (50, 60, 70) #先执行这句
+ORDER BY department_id DESC; #最后执行这句
+
+#多列排序
+#二级排序，显示员工信息，按照department_id降序排列，department_id一样是按照salary的升序排列
+SELECT employee_id, salary, department_id FROM employees ORDER BY department_id DESC, salary ASC;
+```
+
+#### 分页
+
+```sql
+#mysql使用limit实现数据的分页显示
+#每页显示20条记录，此时显示第一页
+SELECT employee_id, last_name FROM employees LIMIT 0,20;
+#每页显示20条记录，此时显示第二页
+SELECT employee_id, last_name FROM employees LIMIT 20,20;
+#每页显示20条记录，此时显示第三页
+SELECT employee_id, last_name FROM employees LIMIT 40,20;
+
+#实际使用
+#每页显示pageSize条记录，此时显示第pageNo页
+#公式：LIMIT (pageNo-1) * pageSize, pageSize;
+
+# WHERE ... ORDER BY ... LIMIT 声明顺序
+SELECT employee_id, last_name, salary FROM employees WHERE salary > 6000 ORDER BY salary DESC LIMIT 0,10;
+
+#LIMIT的格式(严格来说)：LIMIT 位置偏移量,条目数
+#但LIMIT 0,条目数 等同于 LIMIT 条目数
+SELECT employee_id, last_name, salary FROM employees WHERE salary > 6000 ORDER BY salary DESC LIMIT 10;
+
+#表里有107条数据，我们只想要显示第32、33条数据怎么办呢
+SELECT employee_id, last_name FROM employees LIMIT 31,2;
+
+#Mysql 8.0新特性 LIMIT ... OFFSET ...
+#表里有107条数据，我们只想要显示第32、33条数据怎么办呢
+SELECT employee_id, last_name FROM employees LIMIT 2 OFFSET 31;
+
+#查询员工表中工资最高的员工信息
+SELECT employee_id, last_name, salary FROM employees ORDER BY salary DESC LIMIT ;
+
+#LIMIT 可以在Mysql，PGSQL，MariaDB，SQLite等数据库中使用，表示分页
+#不能使用在SQL Server，DB2，Oracle
+```
+
+#### 课后练习
+
+* 查询员工的姓名、部门号、年薪，按年薪降序，按姓名升序显示
+
+```sql
+SELECT last_name, department_id, salary * 12 annual_salary FROM employees ORDER BY annual_salary DESC, last_name ASC;
+```
+
+* 选择工资不在8000 到17000的员工姓名、工资，按工资降序，显示第21到40位置的数据
+
+```sql
+SELECT last_name, salary 
+FROM employees 
+WHERE salary NOT BETWEEN 8000 AND 17000 
+ORDER BY salary DESC 
+LIMIT 20, 20;
+
+SELECT last_name, salary 
+FROM employees 
+WHERE salary < 8000 OR salary > 17000
+ORDER BY salary DESC 
+LIMIT 20, 20;
+```
+
+* 查询邮箱中包含e的员工信息，并先按邮箱的字节数降序，再按部门号升序
+
+```sql
+SELECT employee_id, last_name, email, department_id 
+FROM employees
+WHERE email LIKE '%e%'
+ORDER BY LENGTH(email) DESC, department_id ASC;
 ```
 
