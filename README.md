@@ -47,7 +47,7 @@ SELECT employee_id, salary "月工资", salary * (1 + commission_pct) * 12 "年�
 #### 着重号``
 
 ```sql
-#与关键字重名
+#与关键字重名时使用
 SELECT * FROM order;#错误
 SELECT * FROM `order`;
 ```
@@ -335,6 +335,7 @@ SELECT last_name FROM employees WHERE last_name LIKE '%a%' AND last_name LIKE '%
 
 ```sql
 SELECT last_name, job_id, department_id FROM employees WHERE department_id >= 80 AND department_id <= 100;
+
 SELECT last_name, job_id, department_id FROM employees WHERE department_id BETWEEN 80 AND 100;
 ```
 
@@ -356,8 +357,8 @@ SELECT last_name, salary, manager_id FROM employees WHERE manager_id IN (100, 10
 #默认排序从低到高，升序ASC，降序DESC
 #ORDER BY 后没有显示指明排序方式，默认按照升序排列
 SELECT employee_id, last_name, salary FROM employees ORDER BY salary DESC;
-
 SELECT employee_id, salary, salary * 12 annual_sal FROM employees ORDER BY annual_sal;
+
 #列的别名只能在ORDER BY中使用，不能在WHERE中使用
 SELECT employee_id, salary, salary * 12 annual_sal FROM employees WHERE annual_sal > 81600;#错误语法
 
@@ -377,8 +378,10 @@ SELECT employee_id, salary, department_id FROM employees ORDER BY department_id 
 #mysql使用limit实现数据的分页显示
 #每页显示20条记录，此时显示第一页
 SELECT employee_id, last_name FROM employees LIMIT 0,20;
+
 #每页显示20条记录，此时显示第二页
 SELECT employee_id, last_name FROM employees LIMIT 20,20;
+
 #每页显示20条记录，此时显示第三页
 SELECT employee_id, last_name FROM employees LIMIT 40,20;
 
@@ -439,4 +442,147 @@ FROM employees
 WHERE email LIKE '%e%'
 ORDER BY LENGTH(email) DESC, department_id ASC;
 ```
+
+### 第六章 **多表**查询
+
+#### 基本：表起别名、连接条件
+
+```sql
+#查询员工姓名和其所在部门
+SELECT employee_id, department_name
+FROM employees, departments; #错误，缺少连接条件
+
+SELECT employee_id, department_name
+FROM employees CROSS JOIN departments; #错误，缺少连接条件
+
+SELECT employee_id, last_name, department_name
+FROM employees, departments 
+WHERE employees.department_id = departments.department_id;
+
+#如果查询语句中出现了多个表中都存在的字段，则必须指明此字段所在表
+SELECT employee_id, last_name, department_name, departments.department_id
+FROM employees, departments 
+WHERE employees.department_id = departments.department_id;
+
+#建议：从sql优化的角度，建议多表查询时，每个字段前都指明其所在的表。
+SELECT employee_id, last_name, departments.department_name, departments.department_id
+FROM employees, departments 
+WHERE employees.department_id = departments.department_id;
+
+#可以给表起别名，在SELECT和WHERE中使用的别名，表起别名就必须用别名
+SELECT employee_id, last_name, dept.department_name, dept.department_id
+FROM employees emp, departments dept 
+WHERE emp.department_id = dept.department_id;
+
+#查询员工的employee_id, last_name, department_name, city
+SELECT emp.employee_id, emp.last_name, dept.department_name, loc.city
+FROM employees emp, departments dept, locations loc
+WHERE emp.department_id = dept.department_id AND dept.location_id = loc.location_id;
+
+#查询员工名为'Abel'的人在哪个城市工作
+SELECT emp.employee_id, emp.last_name, dept.department_name, loc.city
+FROM employees emp, departments dept, locations loc
+WHERE emp.department_id = dept.department_id AND dept.location_id = loc.location_id AND last_name = 'Abel';
+
+#如果有n个表实现多表查询，则需要n-1个连接条件
+```
+
+#### 等值连接、非等值连接
+
+* 非等值连接
+
+```sql
+SELECT emp.last_name, emp.salary, jg.grade_level
+FROM employees emp, job_grades jg
+WHERE emp.salary BETWEEN jg.lowest_sal AND jg.highest_sal;
+
+SELECT emp.last_name, emp.salary, jg.grade_level
+FROM employees emp, job_grades jg
+WHERE emp.salary <= jg.highest_sal AND emp.salary >= jg.lowest_sal;
+```
+
+#### 自连接、非自连接
+
+* 自连接
+
+```sql
+#查询员工id，员工姓名及其管理者的id和姓名
+SELECT emp.employee_id, emp.last_name, mag.employee_id manager_id, mag.last_name manager_name
+FROM employees emp, employees mag
+WHERE emp.manager_id = mag.employee_id;
+```
+
+#### 内连接、外连接
+
+* 内连接
+
+> 内连接：合并同一列的两个以上的表的行，结果集中不包含一个表与另一个表不匹配的行
+
+```sql
+#查询员工的employee_id, department_name
+SELECT emp.employee_id, dept.department_name
+FROM employees emp, departments dept
+WHERE emp.department_id = dept.department_id;
+#SQL92见上
+
+#SQL99语法实现上述内连接
+SELECT emp.last_name, dep.department_name
+FROM employees emp JOIN departments dep
+ON emp.department_id = dep.department_id;
+
+#SQL99语法实现内连接
+#查询员工的employee_id, last_name, department_name, city
+SELECT emp.employee_id, emp.last_name, dept.department_name, loc.city
+FROM employees emp INNER JOIN departments dept
+ON emp.department_id = dept.department_id 
+JOIN locations loc
+ON dept.location_id = loc.location_id;#INNER可以省略，完整为INNER JOIN
+```
+
+* 外连接
+
+> 外连接：合并具有同一列的两个以上的表的行，结果集中除了包含一个表与另一个表匹配的行之外，
+> 还查询到了左表或右表中不匹配的行
+>
+> 外连接的分类：左外连接、右外连接、满外连接
+>
+> 1. 左外连接：两个表在连接过程中除了返回满足连接条件的行以外还返回左表中不满足条件的行
+> 2. 右外连接：两个表在连接过程中除了返回满足连接条件的行以外还返回右表中不满足条件的行
+> 3. 满外连接：返回左外连接、右外连接、内连接的结果
+
+```sql
+#查询所有员工的last_name, department_name
+#有所有两字=>注意外连接
+#SQL92标准实现左外连接，使用+，下列子Mysql不支持，会执行错误
+SELECT emp.last_name, dep.department_name
+FROM employees emp, departments dep
+WHERE emp.department_id = dep.department_id(+);#左外连接
+
+#SQL92标准实现右外连接，使用+，下列子Mysql不支持，会执行错误
+SELECT emp.last_name, dep.department_name
+FROM employees emp, departments dep
+WHERE emp.department_id(+) = dep.department_id;#右外连接
+
+#查询所有员工的last_name, department_name
+#SQL99语法实现左外连接
+SELECT emp.last_name, dep.department_name
+FROM employees emp LEFT OUTER JOIN departments dep
+ON emp.department_id = dep.department_id;#OUTER可以省略
+
+#SQL99语法实现右外连接
+SELECT emp.last_name, dep.department_name
+FROM employees emp RIGHT JOIN departments dep
+ON emp.department_id = dep.department_id;#OUTER可以省略
+
+#满外连接
+#SQL99 Mysql不支持下述满外连接
+SELECT emp.last_name, dep.department_name
+FROM employees emp FULL JOIN departments dep
+ON emp.department_id = dep.department_id;#OUTER可以省略，会报错
+
+#实现满外连接效果
+
+```
+
+#### SQL99实现7种JOIN操作
 
