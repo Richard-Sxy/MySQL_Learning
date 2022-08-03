@@ -585,7 +585,7 @@ ON emp.department_id = dep.department_id;#OUTER可以省略，会报错
 
 #### SQL99实现7种JOIN操作
 
-![SQL99实现7种JOIN操作](https://gitee.com/zwhddup/mysql-learning/blob/master/images/SQL99%207operations.png)
+<img src="images/SQL99 7operations.png" alt="image-20220531154418141" style="float:left;" />
 
 > UNION：会执行去重操作
 > UNION ALL：不去重
