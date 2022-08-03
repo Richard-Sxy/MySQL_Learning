@@ -585,7 +585,7 @@ ON emp.department_id = dep.department_id;#OUTER可以省略，会报错
 
 #### SQL99实现7种JOIN操作
 
-![image-20220802111659642](C:\Users\zwh\AppData\Roaming\Typora\typora-user-images\image-20220802111659642.png)
+![SQL99 7种操作](images\SQL99 7种操作.png)
 
 > UNION：会执行去重操作
 > UNION ALL：不去重
