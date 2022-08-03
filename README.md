@@ -581,8 +581,227 @@ FROM employees emp FULL JOIN departments dep
 ON emp.department_id = dep.department_id;#OUTER可以省略，会报错
 
 #实现满外连接效果
-
 ```
 
 #### SQL99实现7种JOIN操作
 
+![image-20220802111659642](C:\Users\zwh\AppData\Roaming\Typora\typora-user-images\image-20220802111659642.png)
+
+> UNION：会执行去重操作
+> UNION ALL：不去重
+
+* 中间图：内连接
+
+```sql
+SELECT emp.employee_id, dept.department_name
+FROM employees emp INNER JOIN departments dept
+ON emp.department_id = dept.department_id
+```
+
+* 左上图：左外连接
+
+```sql
+SELECT emp.employee_id, dept.department_name
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+```
+
+* 右上图：右外连接
+
+```sql
+SELECT emp.employee_id, dept.department_name
+FROM employees emp RIGHT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+```
+
+* 左中图
+
+```sql
+SELECT emp.employee_id, dept.department_name
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE emp.department_id IS NULL
+```
+
+* 右中图
+
+```sql
+SELECT emp.employee_id, dept.department_name
+FROM employees emp RIGHT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE emp.department_id IS NULL
+```
+
+* 左下图：满外连接
+
+```sql
+# 方式1：左上图 UNION ALL 右中图
+SELECT emp.employee_id, dept.department_name
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+UNION ALL
+SELECT emp.employee_id, dept.department_name
+FROM employees emp RIGHT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE emp.department_id IS NULL
+```
+
+```sqlite
+# 方式2：左中图 UNION ALL 右上图
+SELECT emp.employee_id, dept.department_name
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE emp.department_id IS NULL
+UNION ALL
+SELECT emp.employee_id, dept.department_name
+FROM employees emp RIGHT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+```
+
+* 右下图：左中图 UNION ALL 右中图
+
+```sql
+SELECT emp.employee_id, dept.department_name
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE emp.department_id IS NULL
+UNION ALL
+SELECT emp.employee_id, dept.department_name
+FROM employees emp RIGHT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE emp.department_id IS NULL
+```
+
+#### SQL99新特性
+
+* 自然连接
+
+```sql
+#原始连接
+SELECT emp.employee_id, emp.last_name, dept.department_name
+FROM employees emp JOIN departments dept
+ON emp.department_id = dept.department_id
+AND emp.manager_id = dept.manager_id;
+
+#自然连接，会自动查询两张表中，所有相同的字段，然后进行等值连接
+SELECT emp.employee_id, emp.last_name, dept.department_name
+FROM employees emp NATURAL JOIN departments dept
+```
+
+* USING连接使用
+
+```sql
+#原始连接
+SELECT emp.employee_id, emp.last_name, dept.department_name
+FROM employees emp JOIN departments dept
+ON emp.department_id = dept.department_id
+
+#USING连接使用
+SELECT emp.employee_id, emp.last_name, dept.department_name
+FROM employees emp JOIN departments dept
+USING(department_id);
+```
+
+#### 课后练习
+
+* 显示所有员工的姓名、部门号、部门名称
+
+```sql
+SELECT emp.last_name, emp.department_id, dept.department_name 
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id;
+```
+
+* 查询90号部门员工的job_id,和90号部门的location_id
+
+```sql
+SELECT emp.job_id, dept.location_id
+FROM employees emp JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE dept.department_id = 90
+```
+
+* 选择所有有奖金的员工的last_name,department_name,location_id,city
+
+```sql
+SELECT emp.last_name, emp.commission_pct, dept.department_name, dept.location_id, loca.location_id, loca.city
+FROM employees emp LEFT OUTER JOIN departments dept
+ON emp.department_id = dept.department_id 
+LEFT OUTER JOIN locations loca
+ON dept.location_id = loca.location_id
+WHERE emp.commission_pct IS NOT NULL;
+```
+
+* 选择city在Toronto工作的员工的last_name,job_id,department_id,department_name
+
+```sql
+#SQL99语法
+SELECT emp.last_name, emp.job_id, emp.department_id, dept.department_name
+FROM employees emp JOIN departments dept
+ON emp.department_id = dept.department_id
+JOIN locations loca
+ON dept.location_id = loca.location_id
+WHERE loca.city = 'Toronto';
+
+#SQL92语法
+SELECT emp.last_name, emp.job_id, emp.department_id, dept.department_name
+FROM employees emp, departments dept, locations loca
+WHERE emp.department_id = dept.department_id 
+AND dept.location_id = loca.location_id
+AND loca.city = 'Toronto';
+```
+
+* 查询员工所在的部门名称,部门地址,姓名,工作,工资,其中员工所在部门的部门名称为'Executive'
+
+```sql
+SELECT dept.department_name, loca.street_address, emp.last_name, emp.job_id, emp.salary
+FROM departments dept LEFT OUTER JOIN employees emp
+ON emp.department_id = dept.department_id
+LEFT OUTER JOIN locations loca
+ON dept.location_id = loca.location_id
+WHERE dept.department_name = 'Executive';
+```
+
+* 选择指定员工的姓名，员工号，以及他的管理者的姓名和员工号，结果类似于下面的格式
+
+```sql
+SELECT emp1.last_name, emp1.employee_id, emp2.last_name, emp2.employee_id
+FROM employees emp1 LEFT OUTER JOIN employees emp2
+ON emp1.manager_id = emp2.employee_id;
+```
+
+* 查询哪些部门没有员工
+
+```sql
+SELECT dept.department_id, dept.department_name
+FROm departments dept LEFT OUTER JOIN employees emp
+ON dept.department_id = emp.department_id
+WHERE emp.department_id IS NULL;
+
+#本题也可以使用子查询
+SELECT dept.department_id, dept.department_name
+FROM departments dept
+WHERE NOt EXISTS(
+SELECT *
+FROM employees emp
+WHERE emp.department_id = dept.department_id
+);
+```
+
+* 查询哪个城市没有部门
+
+```sql
+SELECT loca.city
+FROM locations loca LEFT OUTER JOIN departments dept
+ON loca.location_id = dept.location_id
+WHERE dept.location_id IS NULL;
+```
+
+* 查询部门为Sales或IT的员工信息
+
+```sql
+SELECT emp.employee_id, emp.last_name, emp.salary, dept.department_name
+FROM employees emp INNER JOIN departments dept
+ON emp.department_id = dept.department_id
+WHERE dept.department_name IN ('Sales', 'IT');
+```
