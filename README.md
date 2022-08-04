@@ -588,6 +588,7 @@ ON emp.department_id = dep.department_id;#OUTER可以省略，会报错
 <img src="images/SQL99 7operations.png" alt="image-20220531154418141" style="float:left;" />
 
 > UNION：会执行去重操作
+>
 > UNION ALL：不去重
 
 * 中间图：内连接
@@ -805,3 +806,6 @@ FROM employees emp INNER JOIN departments dept
 ON emp.department_id = dept.department_id
 WHERE dept.department_name IN ('Sales', 'IT');
 ```
+
+### 第七章 单行函数
+
