@@ -1,6 +1,6 @@
 ### Mysql学习视频
 
-> https://www.bilibili.com/video/BV1iq4y1u7vj?p=16&share_source=copy_web&vd_source=6164cc1e15b15d47186e6ecfe12edef8
+> https://www.bilibili.com/video/BV1iq4y1u7vj?share_source=copy_web&vd_source=6164cc1e15b15d47186e6ecfe12edef8
 
 ### 说明
 
@@ -8,7 +8,9 @@
 >
 >养成写sql语句好习惯，下文皆为sql列子，需执行寻求其含义；
 >
->字符和日期用单引号。
+>字符和日期用单引号；
+>
+>本部分为视频内练手SQL笔记。
 
 ### 第三章 基本SELECT
 
@@ -808,4 +810,93 @@ WHERE dept.department_name IN ('Sales', 'IT');
 ```
 
 ### 第七章 单行函数
+
+#### 数值函数
+
+```sql
+SELECT ABS(-123), ABS(32),#反回绝对值
+SIGN(-23), SIGN(43),#判断正负，1为正，-1为负
+PI(),
+CEIL(32.32), CEILING(-43.23), #往上取
+FLOOR(32.32), FLOOR(-43.23),#往下取
+MOD(12, 5)
+FROM DUAL;
+
+SELECT RAND(), RAND(), RAND(10), RAND(10), RAND(-1), RAND(-1)#随机数
+FROM DUAL;
+
+SELECT ROUND(12.33),#四舍五入
+ROUND(12.345, 2), #精确小数点后2位并四舍五入
+ROUND(12.324, -1), #看小数点前1位并四舍五入
+TRUNCATE(12.66, 1),#看小数点后1位，并舍掉；截断的意思
+TRUNCATE(12.66, -1)#看小数点前1位，并舍掉；截断的意思
+FROM DUAL;
+
+SELECT TRUNCATE(ROUND(12.55), 1)#单行函数可以嵌套
+FROM DUAL;
+
+#角度与弧度互换
+SELECT RADIANS(30), RADIANS(60), RADIANS(90),#角度换为弧度
+DEGREES(2 * PI()), DEGREES(RADIANS(90))#弧度换角度
+FROM DUAL;
+
+#三角函数
+SELECT SIN(RADIANS(30)), #sin
+DEGREES(ASIN(1)), #arcsin
+TAN(RADIANS(45)), #tan
+DEGREES(ATAN(1)), #arctan
+DEGREES(ATAN2(1, 1)) #两个点的 ATAN2(y2 - y1, x2 - x1)
+FROM DUAL;
+
+#指数和对数
+SELECT POW(2,5), POWER(2,4), #指数
+EXP(2), #e的2次方
+LN(10), #ln2
+LOG10(10), LOG2(4), #log(x)
+LN(EXP(2))#默认e为底
+FROM DUAL;
+
+#进制转换
+SELECT BIN(10),
+HEX(10),
+OCT(10),
+#等同于上面
+CONV(10, 10, 2),
+CONV(10, 10, 16),
+CONV(10, 10, 8)
+FROM DUAL;
+```
+
+#### 字符串函数
+
+```sql
+#字符串连接
+SELECT CONCAT(emp.last_name, ' worked for ', mgr.last_name) detail
+FROM employees emp JOIN employees mgr
+WHERE emp.manager_id = mgr.employee_id;
+#用特定符号连接
+SELECT CONCAT_WS('-', 'h', 'e', 'l')
+FROM DUAL;
+
+#在这里字符串索引从1开始，字符替换
+SELECT INSERT('hello world', 2, 3, 'aaaaa'),
+REPLACE('hello', 'llo', 'mmm')
+FROM DUAL;
+
+SELECT UPPER('HelLo'), LOWER('HelLo')
+FROM DUAL;
+
+SELECT LEFT('HelLo', 2),#取左边两个
+RIGHT('HelLo', 3)
+FROM DUAL;
+
+SELECT employee_id, last_name, LPAD(salary, 10, '*')#实现右对齐，RPAD左对齐
+FROM employees;
+```
+
+#### 日期时间函数
+
+
+
+#### 流程控制函数
 
