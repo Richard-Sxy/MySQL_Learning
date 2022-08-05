@@ -896,7 +896,150 @@ FROM employees;
 
 #### 日期时间函数
 
+```sql
+SELECT CURDATE(), CURTIME(), NOW(),#当前时间
+UTC_DATE(), UTC_TIME()#格林威治当前时间
+FROM DUAL;
 
+SELECT UNIX_TIMESTAMP(), UNIX_TIMESTAMP('2022-08-05 15:32:21'),#返回时间戳
+FROM_UNIXTIME(1659684777)#时间戳转日期
+FROM DUAL;
+
+SELECT YEAR(CURDATE()), MONTH(CURDATE()), DAY(CURDATE()),#年月日
+HOUR(CURTIME()), MINUTE(NOW()), SECOND(SYSDATE())#时分秒
+FROM DUAL;
+
+SELECT MONTHNAME('2021-10-26'), DAYNAME('2021-10-26'), WEEKDAY('2021-10-26'),#月，周2，周2为1
+QUARTER(CURDATE()), WEEK(CURDATE()), DAYOFYEAR(NOW()),#季度，今年第几周，今年第几天
+DAYOFMONTH(NOW()), DAYOFWEEK(NOW())#这月第几天，这周第几天
+FROM DUAL;
+
+#EXTRACT(type FROM date)
+SELECT EXTRACT(MINUTE FROM NOW()),EXTRACT(WEEK FROM NOW()),#分，今年第几周
+EXTRACT(QUARTER FROM NOW()), EXTRACT(MINUTE_SECOND FROM NOW()),#第几季度，分秒合一起
+EXTRACT(YEAR FROM '2021-10-26')
+FROM DUAL;
+
+SELECT DATE_ADD(NOW(), INTERVAL 1 DAY) AS col1, #当前时间加1天
+DATE_ADD('2021-10-21 23:32:12', INTERVAL 1 SECOND) AS col2,#加1秒
+ADDDATE('2021-10-21 23:32:12', INTERVAL 1 SECOND) AS col3,#加1秒
+DATE_ADD('2021-10-21 23:32:12', INTERVAL '1_1' MINUTE_SECOND) AS col4,#分秒都加1
+DATE_ADD(NOW(), INTERVAL -1 YEAR) AS col5, #可以是负数，减1年
+DATE_ADD(NOW(), INTERVAL '1_1' YEAR_MONTH) AS col6 #需要单引号，年月都加1
+FROM DUAL;
+
+SELECT ADDTIME(NOW(), 20), SUBTIME(NOW(), 30),#秒加，秒减
+SUBTIME(NOW(), '1:1:3'), DATEDIFF(NOW(),'2021-10-01'),#时分秒相减，年月日相减
+TIMEDIFF(NOW(), '2021-10-25 22:10:10'),#时间间隔多少天
+FROM_DAYS(366), TO_DAYS('0000-12-25'),#从0000年1月1日起，N天以后的日期；日期date距离0000年1月1日的天数
+LAST_DAY(NOW()), MAKEDATE(YEAR(NOW()), 12),#返回date所在月份的最后一天日期；返回给定年数的第几天的日期
+MAKETIME(10,21,23)#返回时分秒；返回相加后的时间
+FROM DUAL;
+
+SELECT PERIOD_ADD(202002, 10)#在给定日期增加月份
+FROM DUAL;
+
+#日期格式化与解析
+#格式化
+SELECT DATE_FORMAT(CURDATE(), '%Y-%M-%D'),
+DATE_FORMAT(NOW(), '%Y-%m-%d'), DATE_FORMAT(NOW(),'%H:%i:%S'), CURDATE(),
+DATE_FORMAT(NOW(),'%Y-%M-%D %h:%i:%S %W %w %T %r')
+FROM DUAL;
+#格式化逆过程
+SELECT STR_TO_DATE('2022-August-5th 05:24:11', '%Y-%M-%D %h:%i:%S') AS time
+FROM DUAL;
+
+#设置好的格式，现用
+SELECT GET_FORMAT(DATE, 'USA')
+FROM DUAL;
+SELECT DATE_FORMAT(NOW(), GET_FORMAT(DATETIME, 'USA'))
+FROM DUAL;
+```
 
 #### 流程控制函数
+
+```sql
+#流程控制
+SELECT last_name, salary, IF(salary >= 6000, '高工资', '低工资')
+FROM employees;
+
+SELECT last_name, commission_pct, IF(commission_pct IS NOT NULL, commission_pct, 0) details,
+salary * 12 * (1 + IF(commission_pct IS NOT NULL, commission_pct, 0)) annual_sal
+FROM employees;
+
+SELECT last_name, commission_pct, IFNULL(commission_pct, 0) details
+FROM employees;
+
+SELECT last_name, salary, CASE WHEN salary >= 15000 THEN '白骨精'
+	                           WHEN salary >= 10000 THEN '潜力股'
+                               WHEN salary >= 8000 THEN '小屌丝'
+                               ELSE '草根'
+							   END details
+FROM employees;
+
+#查询部门号为10,20,30的员工信息，为10打印其工资1.1倍，
+#为20打印1.2，为30打印1.3，其他打印1.4
+SELECT employee_id, last_name, department_id, salary, CASE department_id 
+WHEN 10 THEN salary * 1.1
+WHEN 20 THEN salary * 1.2
+WHEN 30 THEN salary * 1.3
+ELSE salary * 1.4
+END salary
+FROM employees;
+
+#查询部门号为10,20,30的员工信息，为10打印其工资1.1倍，
+#为20打印1.2，为30打印1.3
+SELECT employee_id, last_name, department_id, salary, CASE department_id 
+WHEN 10 THEN salary * 1.1
+WHEN 20 THEN salary * 1.2
+WHEN 30 THEN salary * 1.3
+END details
+FROM employees
+WHERE department_id IN (10, 20, 30);
+```
+
+#### 加密解密函数
+
+```sql
+#加密
+SELECT MD5('mysql'), SHA('mysql')
+FROM DUAL;
+
+#加密解密
+SELECT ENCODE('dylan','mysql'), DECODE(ENCODE('dylan','mysql'),'mysql')#mysql8.0 弃用
+FROM DUAL;
+
+#Mysql信息函数
+SELECT VERSION(),#版本
+CONNECTION_ID(),#mysql服务器连接数
+DATABASE(),#当前数据库
+USER(),#当前用户
+CHARSET('dylan'),
+COLLATION('dylan')
+FROM DUAL;
+```
+
+#### 其他函数
+
+```sql
+#其它函数
+SELECT FORMAT(12.325, 2),#保留2位小数
+FORMAT(12.325, -2),#小于等于0保留整数
+CONV(16, 10, 2), CONV(8888, 10, 16), CONV(NULL, 10, 2)#进制转换
+FROM DUAL;
+
+SELECT INET_ATON('192.168.1.100'),#加密
+#转换规则
+#以“192.168.1.100”为例，计算方式为192乘以256的3次方，加上168乘以256的2次方，加上1乘以256，再加上100。
+INET_NTOA('3232235876')#解密
+FROM DUAL;
+
+#测试表达式执行效率
+SELECT BENCHMARK(1000, MD5('mysql123123123')) time
+FROM DUAL;
+
+#实现字符集转换
+SELECT CHARSET('dylan'), CHARSET(CONVERT('dylan' USING 'gbk'))
+FROM DUAL;
+```
 
