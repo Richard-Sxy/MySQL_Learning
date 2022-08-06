@@ -1043,3 +1043,222 @@ SELECT CHARSET('dylan'), CHARSET(CONVERT('dylan' USING 'gbk'))
 FROM DUAL;
 ```
 
+#### 课后练习
+
+* 显示系统时间
+
+```sql
+SELECT NOW()
+FROM DUAL;
+```
+
+* 查询员工工号，姓名，工资，以及工资提高百分之20%后的结果
+
+```sql
+SELECT employee_id, last_name, salary, salary * (1 + 0.2) upSalary
+FROM employees;
+```
+
+* 将员工的姓名按首字母排序，写出姓名的长度
+
+```sql
+SELECT last_name, LENGTH(last_name) len_lastName
+FROM employees
+#ORDER BY LEFT(last_name, 1)
+ORDER BY last_name;
+```
+
+* 查询员工id,last_name,salary,并作为一个列输出，别名为OUT_PUT
+
+```sql
+SELECT CONCAT_WS('_', employee_id, last_name, salary) OUT_PUT
+FROM employees;
+```
+
+* 查询公司个员工工作的年数、工作的天数，并按工作年数的降序排序
+
+```sql
+SELECT last_name, EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM hire_date) work_years,
+DATEDIFF(NOW(), hire_date) work_days
+FROM employees
+ORDER BY work_years DESC;
+```
+
+* 查询员工姓名，hire_date，department_id,满足以下条件：雇用时间在1997年之后，department_id为80或90或110，commission_pct不为空
+
+```sql
+SELECT last_name, department_id, hire_date
+FROM employees
+WHERE department_id IN (80, 90, 110)
+AND EXTRACT(YEAR FROM hire_date) >= 1997
+#AND hire_date >= '1997-01-01' #存在着隐式转换
+AND commission_pct IS NOT NULL
+```
+
+* 查询公司中入职超过10000天的员工姓名、入职时间
+
+```sql
+SELECT last_name, hire_date, DATEDIFF(NOW(), hire_date) work_days
+FROM employees
+WHERE DATEDIFF(NOW(), hire_date) > 10000;
+```
+
+* 做一个查询，产生下面的结果：<last_name> earns <salary> monthly but wants <salary*3>
+
+```sql
+SELECT CONCAT(last_name, ' earns ', TRUNCATE(salary, 0), ' monthly but wants ', TRUNCATE(salary * 3, 0)) dream_salary
+FROM employees;
+```
+
+* 使用case-when，按照下面的条件：
+  job               grade
+  AN_PRES        A
+  ST_MAN         B
+  IT_PROG        C
+  SA_REP          D
+  ST_CLERK      E
+
+```sql
+SELECT last_name, job_id, CASE job_id
+WHEN 'AD_PRES' THEN 'A'
+WHEN 'ST_MAN' THEN 'B'
+WHEN 'IT_PROG' THEN 'C'
+WHEN 'SA_REP' THEN 'D'
+WHEN 'ST_CLERK' THEN 'E'
+ELSE 'O'
+END grade
+FROM employees;
+```
+
+### 第八章 聚合函数
+
+#### 5大常用聚合函数
+
+```sql
+#AVG, SUM
+SELECT AVG(salary), SUM(salary)
+FROM employees;
+
+#MAX，MIN
+SELECT MAX(salary), MIN(salary)
+FROM employees;
+SELECT MAX(last_name)
+FROM employees;
+
+#COUNT
+#计算指定字段在查询结构中出现的个数
+SELECT COUNT(employee_id), COUNT(salary), COUNT(1), COUNT(*)
+FROM employees;
+#如果计算表中有多少条记录，如何实现
+#方式1：COUNT(1)
+#方式2：COUNT(*)
+#方式3：COUNT(具体字段)：不一定对
+#如果使用MyISAM引擎上述三种方式效率一样
+#使用InnoDB引擎，则三者效率COUNT(1) = COUNT(*) > COUNT(具体字段)
+#COUNT()不计算NULL
+
+#AVG = SUM / COUNT；AVG，SUM，COUNT自动过滤NULL
+SELECT AVG(commission_pct), SUM(commission_pct) / COUNT(commission_pct)
+FROM employees;
+#查询公司中平均奖金率
+SELECT AVG(commission_pct) FROM employees;#错误的
+SELECT SUM(commission_pct) / COUNT(*) FROM employees;#正确方法
+```
+
+#### GROUP BY
+
+```sql
+#查询各个部门的平均工资，最高工资
+SELECT department_id, AVG(salary), MAX(salary)
+FROM employees
+GROUP BY department_id;
+
+#查询各个job_id的平均工资
+SELECT job_id, AVG(salary)
+FROM employees
+GROUP BY job_id;
+
+#使用多个列分组
+#查询各个department_id,job_id的平均工资
+SELECT department_id, job_id, AVG(salary)
+FROM employees
+GROUP BY department_id, job_id;
+#上下操作一样
+SELECT department_id, job_id, AVG(salary)
+FROM employees
+GROUP BY job_id, department_id;
+
+#GROUP BY 声明在FROM后面、WHERE后面，ORDER BY前面、LIMIT前面
+
+#使用WITH ROLLUP
+#增加计算了salary整体平均
+SELECT department_id, AVG(salary)
+FROM employees
+GROUP BY department_id WITH ROLLUP;
+```
+
+#### HAVING使用
+
+> HAVING起过滤数据的作用
+>
+> WHERE里面不能放聚合函数
+>
+> WHERE与HAVING对比：
+>
+> 1.HAVING适用范围更广
+>
+> 2.过滤条件无聚合函数，使用WHERE效率更高
+
+```sql
+#查询各个部门中最高工资比10000高的部门信息
+#如果过滤条件使用了聚合函数，则必须用HAVING替代WHERE
+#HAVING 必须放在 GROUP BY后面
+SELECT department_id, MAX(salary) max_salary
+FROM employees
+GROUP BY department_id
+HAVING MAX(salary) > 10000;
+#通常HAVING 依托 GROUP BY
+
+#查询部门id为10,20,30,40,这几个部门中最高工资比10000高的部门信息
+#方式1，过滤条件无聚合函数，要使用WHERE，效率高
+SELECT department_id, MAX(salary) max_salary
+FROM employees
+WHERE department_id IN (10, 20, 30, 40)
+GROUP BY department_id
+HAVING MAX(salary) > 10000;
+#方式2
+SELECT department_id, MAX(salary) max_salary
+FROM employees
+GROUP BY department_id
+HAVING MAX(salary) > 10000 AND department_id IN (10, 20, 30, 40);
+```
+
+#### SQL执行原理
+
+```sql
+#SQL92
+SELECT ...........(存在聚合函数)
+FROM..............
+WHERE 多表连接条件 AND 不包含聚合函数的过滤条件
+GROUP BY... , ...
+HAVING 包含聚合函数的过滤条件
+ORDER BY ... , ...（ASC/DESC)
+LIMIT ..., ...
+
+#SQL99
+SELECT ...........(存在聚合函数)
+FROM...... (LEFT / RIGHT) JOIN .... ON多表的连接条件
+(LEFT / RIGHT) JOIN .... ON ...
+WHERE 不包含聚合函数的过滤条件
+GROUP BY... , ...
+HAVING 包含聚合函数的过滤条件
+ORDER BY ... , ...（ASC/DESC)
+LIMIT ..., ...
+
+#SQL语句执行过程
+#详情：
+#FROM ... , ... -> ON -> (LEFT / RIGHT JOIN) 
+#-> WHERE -> GROUP BY -> HAVING -> SELECT 
+#-> DISTINCT(去重) -> ORDER BY -> LIMIT
+```
+
