@@ -1,3 +1,13 @@
+### 笔记参考来源
+
+**这位同学的仓库下也有基础，高级的笔记（且有pdf版本）。**
+
+**当然我这边已经copy过来了，因为之前找的图片存在问题。**
+
+**建议看pdf版本，目前找的高级片mk文件好像缺了。**
+
+https://gitee.com/MingZii/learn_db
+
 ### Mysql学习视频
 
 > https://www.bilibili.com/video/BV1iq4y1u7vj?share_source=copy_web&vd_source=6164cc1e15b15d47186e6ecfe12edef8
