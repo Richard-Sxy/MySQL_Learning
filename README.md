@@ -36,6 +36,7 @@ SELECT employee_id, last_name, salary FROM employees;
 ```sql
 #as->alias
 #列的别名可以使用一对""引起来
+#AS 可以省略
 SELECT employee_id AS emp_id, last_name lname, department_id "dept_id", salary * 12 annual_sal
 FROM employees;
 ```
@@ -371,7 +372,7 @@ SELECT last_name, salary, manager_id FROM employees WHERE manager_id IN (100, 10
 SELECT employee_id, last_name, salary FROM employees ORDER BY salary DESC;
 SELECT employee_id, salary, salary * 12 annual_sal FROM employees ORDER BY annual_sal;
 
-#列的别名只能在ORDER BY中使用，不能在WHERE中使用
+#列的别名只能在ORDER BY中使用，不能在WHERE中使用。SQL执行原理有关
 SELECT employee_id, salary, salary * 12 annual_sal FROM employees WHERE annual_sal > 81600;#错误语法
 
 #WHERE 需要声明在FROM后，ORDER BY前
@@ -416,7 +417,7 @@ SELECT employee_id, last_name FROM employees LIMIT 31,2;
 SELECT employee_id, last_name FROM employees LIMIT 2 OFFSET 31;
 
 #查询员工表中工资最高的员工信息
-SELECT employee_id, last_name, salary FROM employees ORDER BY salary DESC LIMIT ;
+SELECT employee_id, last_name, salary FROM employees ORDER BY salary DESC LIMIT 0, 1;
 
 #LIMIT 可以在Mysql，PGSQL，MariaDB，SQLite等数据库中使用，表示分页
 #不能使用在SQL Server，DB2，Oracle
@@ -633,7 +634,7 @@ ON emp.department_id = dept.department_id
 SELECT emp.employee_id, dept.department_name
 FROM employees emp LEFT OUTER JOIN departments dept
 ON emp.department_id = dept.department_id
-WHERE emp.department_id IS NULL
+WHERE emp.department_id IS NULL#员工没部门
 ```
 
 * 右中图
@@ -642,7 +643,7 @@ WHERE emp.department_id IS NULL
 SELECT emp.employee_id, dept.department_name
 FROM employees emp RIGHT OUTER JOIN departments dept
 ON emp.department_id = dept.department_id
-WHERE emp.department_id IS NULL
+WHERE emp.employee_id IS NULL#部门没员工
 ```
 
 * 左下图：满外连接
@@ -656,7 +657,7 @@ UNION ALL
 SELECT emp.employee_id, dept.department_name
 FROM employees emp RIGHT OUTER JOIN departments dept
 ON emp.department_id = dept.department_id
-WHERE emp.department_id IS NULL
+WHERE emp.employee_id IS NULL
 ```
 
 ```sqlite
@@ -682,7 +683,7 @@ UNION ALL
 SELECT emp.employee_id, dept.department_name
 FROM employees emp RIGHT OUTER JOIN departments dept
 ON emp.department_id = dept.department_id
-WHERE emp.department_id IS NULL
+WHERE emp.employee_id IS NULL
 ```
 
 #### SQL99新特性
@@ -789,7 +790,7 @@ ON emp1.manager_id = emp2.employee_id;
 SELECT dept.department_id, dept.department_name
 FROm departments dept LEFT OUTER JOIN employees emp
 ON dept.department_id = emp.department_id
-WHERE emp.department_id IS NULL;
+WHERE emp.employee_id IS NULL;
 
 #本题也可以使用子查询
 SELECT dept.department_id, dept.department_name
@@ -807,7 +808,7 @@ WHERE emp.department_id = dept.department_id
 SELECT loca.city
 FROM locations loca LEFT OUTER JOIN departments dept
 ON loca.location_id = dept.location_id
-WHERE dept.location_id IS NULL;
+WHERE dept.department_id IS NULL;
 ```
 
 * 查询部门为Sales或IT的员工信息
@@ -824,7 +825,7 @@ WHERE dept.department_name IN ('Sales', 'IT');
 #### 数值函数
 
 ```sql
-SELECT ABS(-123), ABS(32),#反回绝对值
+SELECT ABS(-123), ABS(32),#返回回绝对值
 SIGN(-23), SIGN(43),#判断正负，1为正，-1为负
 PI(),
 CEIL(32.32), CEILING(-43.23), #往上取
@@ -1488,5 +1489,4 @@ WHERE employee_id NOT IN
 (SELECT manager_id FROM employees WHERE manager_id IS NOT NULL)
 ```
 
-#### 相关子查询
-
+> 看黑马的视频了。原来那个好长
