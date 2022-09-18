@@ -6,11 +6,17 @@
 
 **建议看pdf版本，因为找的高级篇mk文件好像缺了。**
 
+
+
+**个人已经改学其他视频了，原视频太长了╮(╯▽╰)╭，如果正在mysql开发优化的朋友可以坚持下去，而我目前只需要了解，加深就行。**
+
 https://gitee.com/MingZii/learn_db
 
 ### Mysql学习视频
 
-> https://www.bilibili.com/video/BV1iq4y1u7vj?share_source=copy_web&vd_source=6164cc1e15b15d47186e6ecfe12edef8
+> 原学习视频：https://www.bilibili.com/video/BV1iq4y1u7vj?share_source=copy_web&vd_source=6164cc1e15b15d47186e6ecfe12edef8
+>
+> 改学视频：https://www.bilibili.com/video/BV1Kr4y1i7ru?share_source=copy_web&vd_source=6164cc1e15b15d47186e6ecfe12edef8
 
 ### 说明
 
