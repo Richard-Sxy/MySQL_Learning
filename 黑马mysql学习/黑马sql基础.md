@@ -95,6 +95,13 @@ ALTER TABLE 表名 RENAME TO 新表名#修改表名
 DROP TABLE [IF EXISTS] 表名;#删除表
 
 TRUNCATE TABLE 表名;#删除表，并重新创建该表
+
+create table new_table_name select * from old_table_name;#复制表结构及数据
+
+#复制表结构到新表，不复制数据
+create table new_table_name select * from old_table_name where 1 = 2;
+#或
+create table new_table_name like old_table_name;
 ```
 
 ### DML
@@ -104,19 +111,22 @@ TRUNCATE TABLE 表名;#删除表，并重新创建该表
 #### 插入
 
 ```sql
-1.给指定字段添加数据
+#1.给指定字段添加数据
 INSERT INTO 表名(字段名1, 字段名2, ......) VALUES (值1, 值2, ......);
 
 INSERT INTO employee(id, workno, name, gender, age, idcard, entrydate) VALUES (1, '1', 'Itcast', '男', 10, '123412341234123412', '2022-09-18');
 
-2.给全部字段添加数据
+#2.给全部字段添加数据
 INSERT INTO 表名 VALUES(值1,值2,...);
 
 INSERT INTO employee VALUES (2, '2', 'Itcast', '男', 10, '123412348234123412', '2022-09-17');
 
-3.批量添加数据
+#3.批量添加数据
 INSERT INTO 表名(字段1,字段2,......) VALUES(值1,值2,...),(值1,值2,...),(值1,值2,...);
 INSERT INTO 表名 VALUES(值1,值2,...),(值1,值2,...),(值1,值2,...);
+
+#4.复制旧表的数据到新表
+insert into new_table_name(字段1,字段2,......) select 字段1,字段2,...... from old_table_name
 ```
 
 #### 更新和删除
