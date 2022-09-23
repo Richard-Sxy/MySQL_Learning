@@ -413,3 +413,195 @@ select count(distinct substring(email, 1, 10)) / count(*) from tb_user;
 - 要控制索引的数量，索引并不是多多益善，索引越多，维护索引结构的代价也就越大，会影响增删改的效率。
 - 如果索引列不能存储NULL值,请在创建表时使用NOT NULL约束它。当优化器知道每列是否包含NULL值时，它可以更好地确定哪个索引最有效地用于查询。
 
+### SQL优化
+
+#### 插入数据
+
+**insert优化**
+
+```sql
+start transaction;
+insert into tb_test values(1,'Tom'),(2,'cat'),(3,'jerry');
+commit;
+#建议批量插入，数据500~1000
+#建议手动提交事务
+#建议主键顺序插入
+```
+
+<img src="images/images_20220923091740.png">
+
+```sql
+#大批量数据插入
+#如果一次性需要插入大批量数据，使用insert语句插入性能较低，此时可以使用MySQL数据库提供的load指令进行插
+#入。
+#操作如下:
+#客户端连接服务端时，加上参数--local-infile
+mysql --local-infile -U root -p
+#设置全局参数local infile为1，开启从本地加载文件导入数据的开关
+set global local_infile= 1;
+#执行load指令将准备好的数据，加载到表结构中
+load data local infile '/root/sql1.log' into table tb_user fields terminated by ',' lines terminated by '\n';
+#按主键顺序插入
+```
+
+#### 主键优化
+
+**数据组织方式**
+在InnoDB存储引擎中，表数据都是根据主键顺序组织存放的，这种存储方式的表称为索引组织表(index organized table I0T)。
+
+**页分裂**
+
+主键乱序插入会造成页分裂
+
+**页合并**
+
+当删除一行记录时，实际上记录并没有被物理删除，只是记录被标记(flaged) 为删除并且它的空间变得允许被其他记录声明使用。当页中删除的记录达到MERGE_THRESHOLD (合并页的阈值，默认为页的50%) ， InnoDB会开始寻找最靠近的页(前或后) 看看是否可以将两个页合并以优化空间使用。
+
+**主键设计原则**
+
+1. 满足业务需求的情况下，尽量降低主键的长度。
+2. 插入数据时，尽量选择顺序插入，选择使用AUTO_INCREMENT自增主键。
+3. 尽量不要使用UUID做主键或者是其他自然主键，如身份证号。
+
+#### order by优化
+
+Using filesort：通过表的索引或全表扫描，读取满足条件的数据行，然后在排序缓冲区sort buffer中完成排序操作，所有不是通过索引直接返回排序结果的排序都叫FileSort排序。
+Using index：通过有序索引顺序扫描直接返回有序数据，这种情况即为using index，不需要额外排序，操作效率高。
+
+```sql
+create index idx_age_pho on tb_user(age asc, name desc);#默认升序asc
+```
+
+1. 根据排序字段建立合适的索引，多字段排序时，也遵循最左前缀法则。
+2. 尽量使用覆盖索引。
+3. 多字段排序，一个升序一个降序，此时需要注意联合索引在创建时的规则(ASC/DESC)
+4. 如果不可避免的出现filesort，大数据量排序时，可以适当增大排序缓冲区大小sortlbuffer_size(默认256k)。
+
+```sql
+show variables like 'sort_buffer_size';
+```
+
+#### group by优化
+
+建立索引。若group by 后字段满足最左前缀法则使用索引，不满足时可能需要使用索引+临时表
+
+#### limit优化
+
+一个常见又非常头疼的问题就是limit 2000000,10，此时需要MySQL排序前2000010记录，仅仅返回2000000 - 2000010的记录，其他记录丢弃，查询排序的代价非常大。
+
+**优化**：覆盖索引 + 子查询
+
+#### count优化
+
+MylSAM引擎把一个表的总行数存在了磁盘上，因此执行count(*)的时候会直接返回这个数，效率很高（没有条件）。
+
+InnoDB引擎就麻烦了，它执行count(*)的时候，需要把数据一行一·行地从引擎里面读出来，然后累积计数。
+
+**优化**：自己加个计数字段吧。
+
+**count的几种用法**
+count()是一个聚合函数，对于返回的结果集，一行行地判断，如果count函数的参数不是NULL， 累计值就加1，否则不加，最后返回累计值。
+用法: count (*) 、count (主键)、count (字段)、count (1)
+
+1. count (主键)
+   InnoDB引擎会遍历整张表，把每一行的主键id值都取出来，返回给服务层。服务层拿到主键后，直接按行进行累加(主键不可能为null)。
+2. count(字段)
+   没有not null约束: InnoDB引擎会遍历整张表把每一行的字段值都取出来，返回给服务层，服务层判断是否为null,不为null,计数累加。
+   有not null约束: InnoDB 引擎会遍历整张表把每一行的字 段值都取出来，返回给服务层，直接按行进行累加。
+3. count (1)
+   InnoDB引擎遍历整张表，但不取值。服务层对于返回的每一行，放一个数字“1” 进去，直接按行进行累加。
+4. count (*)
+   InnoDB引擎并不会把全部字段取出来，而是**专门做了优化**，不取值，服务层直接按行进行累加。
+
+按照效率排序的话，count(字段) < count(主键id) < count(1)≈count(\*)，所以尽量使用count(\*)。
+
+#### update优化
+
+没有索引加的是表锁
+
+有索引加的是行锁
+
+InnoDB的行锁是针对索引加的锁，不是针对记录加的锁，并且该索引不能失效，否则会从行锁升级为表锁。
+
+尽量根据主键/索引字段进行数据更新
+
+### 视图
+
+>视图(View) 是一种虚拟存在的表。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图的查询中使用的表，并且是在使用视图时动态生成的。
+>通俗的讲，视图只保存了查询的SQL逻辑，不保存查询结果。所以我们在创建视图的时候，主要的工作就落在创建这条SQL查询语句上。
+
+#### 视图基本使用
+
+```sql
+#创建视图
+#1.创建
+CREATE [OR REPLACE] VIEW 视图名称[(列名列表)] AS SELECT语句 [WITH[CASCADED | LOCAL] CHECK OPTION]
+
+create or replace view stu_v_1 as select id,name from emp where id <= 10;
+
+#2.查询
+#查看创建视图语句: SHOW CREATE VIEW视图名称
+show create view stu_v_1
+
+#查看视图数据: SELECT * FROM视图名称（和表操作一样）
+select * from stu_v_1
+
+#3.修改
+#方式一: CREATE [OR REPLACE] VIEW 视图名称[(列名列表)] AS SELECT语句 [WITH[CASCADED | LOCAL] CHECK OPTION]
+create or replace view stu_v_1 as select id,name,job from emp where id <= 10;
+#方式二: ALTER VIEW视图名称[(列名列表)] AS SELECT语句 [WITH[CASCADED | LOCAL] CHECK OPTION]
+alter view stu_v_1 as select id,name,salary from emp where id <= 10;
+
+#4.删除
+DROP VIEW [IF EXISTS]视图名称[视图名称]..
+drop view if exists stu_v_1;
+```
+
+#### 视图检查选项
+
+当使用WITH CHECK OPTION子句创建视图时，MySQL会通过视图检查正在更改的每个行，例如插入，更新，删除，以使其符合视图的定义。MySQL允许基于另个视图创建视图，它还会检查依赖视图中的规则以保持一 致性。为了确定检查的范围， mysql提供了两个选项: CASCADED和LOCAL，默认值为CASCADED。
+
+CASCADED（级联的）：
+
+```sql
+alter view stu_v_1 as select id,name,salary from emp where id <= 10;
+
+insert into stu_v_1(id, name)  values(20, 'dog');#不能插入，没满足条件id <= 10
+
+create or replace view stu_v_2 as select id,name from stu_v_1 where id > 5 with CHECK OPTION;#会检查当前视图所依赖的所有视图是否满足，不管依赖的视图是否加了with check option，因为会传递下去，但只往下传递
+
+insert into stu_v_2(id, name)  values(20, 'miqi');
+```
+
+LOCAL
+
+```sql
+create view v1 as select id,name from emp where id <= 15;
+
+create view v2 as select id,name from v1 where id >= 5 with local check option;
+
+insert into v2(id, name)  values(24, 'miqi');
+#不会传递下去，只会递归检查，没有加with check option 就可以不检查
+```
+
+#### 视图更新 
+
+要使视图可更新，视图中的行与基础表中的行之间必须存在一对一的关系。如果视图包含以下任何一项，则该视图不可更新:
+
+1. 聚合函数或窗口函数(SUM()、 MIN()、 MAX()、 COUNT()等)
+2. DISTINCT
+3. GROUP BY
+4. HAVING
+5. UNION 或者UNION ALL
+
+**视图作用**
+
+1. 简单
+   视图不仅可以简化用户对数据的理解，也可以简化他们的操作。那些被经常使用的查询可以被定义为视图，从而使得用户不必为以后的操作每次指定全部的条件。
+
+2. 安全
+
+   数据库可以授权，但不能授权到数据库特定行和特定的列上。通过视图用户只能查询和修改他们所能见到的数据。
+
+3. 数据独立
+   视图可帮助用户屏蔽真实表结构变化带来的影响。
