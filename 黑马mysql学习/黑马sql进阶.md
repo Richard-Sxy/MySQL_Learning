@@ -530,6 +530,8 @@ InnoDB的行锁是针对索引加的锁，不是针对记录加的锁，并且�
 >视图(View) 是一种虚拟存在的表。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图的查询中使用的表，并且是在使用视图时动态生成的。
 >通俗的讲，视图只保存了查询的SQL逻辑，不保存查询结果。所以我们在创建视图的时候，主要的工作就落在创建这条SQL查询语句上。
 
+简单、安全、数据独立（业务代码不变，只需修改视图）。
+
 #### 视图基本使用
 
 ```sql
@@ -1093,4 +1095,217 @@ begin
 	return total;
 end;
 ```
+
+### 触发器
+
+>触发器是与表有关的数据库对象，指在insert/update/delete之前或之后，触发并执行触发器中定义的SQL语句集合。触发器的这种特性可以协助应用在数据库端确保数据的完整性，日志记录，数据校验等操作。
+>使用别名OLD和NEW来引用触发器中发生变化的记录内容，这与其他的数据库是相似的。现在触发器还只支持行级触发，不支持语句级触发。
+
+| 触发器类型      | NEW 和 OLD                                           |
+| --------------- | ---------------------------------------------------- |
+| INSERT 型触发器 | NEW表示将要或者已经新增的数据                        |
+| UPDATE 型触发器 | OLD表示修改之前的数据，NEW表示将要或已经修改后的数据 |
+| DELETE 型触发器 | OLD表示将要或者已经删除的数据                        |
+
+行级触发器：影响多少行，触发多少次
+
+语句级触发器：只触发一次
+
+```sql
+#创建
+CREATE TRIGGER trigger_name
+	BEFORE/AFTER INSERT/UPDATE/DELETE
+	ON tbl_name FOR EACH ROW #行级触发器
+BEGIN
+	trigger_stmt;
+END;
+#查看
+SHOW TRIGGERS;
+#删除
+DROP TRIGGER [schema_name.]trigger_name; #如果没有指定schema_name,默认为当前数据库。
+```
+
+```sql
+#通过触发器记录表的数据变更日志，将变更日志插入到日志表emp_logs中，包含增加，修改，删除;
+CREATE TABLE `emp_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `operation` varchar(20) NOT NULL COMMENT '操作类型',
+  `operate_time` datetime NOT NULL COMMENT '操作的时间',
+  `operate_id` int(11) NOT NULL COMMENT '操作的ID',
+  `operate_params` varchar(500) DEFAULT NULL COMMENT '操作参数',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+#创建insert触发器
+create trigger tb_emp_insert_trigger
+	after insert on emp for each row
+begin
+	insert into emp_logs(id,operation,operate_time,operate_id,operate_params)
+	values(null, 'insert', now(), new.id, concat('插入的数据内容为：id=',new.id,',name=',new.name,',age=',new.age));
+end;
+show triggers;
+
+drop trigger tb_emp_insert_trigger;
+
+insert into emp(name,age) values('tom', 99);
+
+#创建update触发器
+create trigger tb_emp_update_trigger
+	after update on emp for each row
+begin
+	insert into emp_logs(id,operation,operate_time,operate_id,operate_params)
+	values(null, 'update', now(), new.id, concat('更新之前的数据内容为：id=',old.id,',name=',old.name,',age=',old.age,
+	'更新之前的数据内容为：id=',new.id,',name=',new.name,',age=',new.age));
+end;
+
+show triggers;
+
+update emp set name = 'tom2',age = 100 where id = 30;
+
+#创建delete触发器
+create trigger tb_emp_delete_trigger
+	after delete on emp for each row
+begin
+	insert into emp_logs(id,operation,operate_time,operate_id,operate_params)
+	values(null, 'delete', now(), old.id, concat('删除之前的数据内容为：id=',old.id,',name=',old.name,',age=',old.age));
+end;
+
+delete from emp where id = 30;
+```
+
+### 锁
+
+>锁是计算机协调多个进程或线程并发访问某一资源的机制。 在数据库中，除传统的计算资源(CPU、 RAM、I/O)的争用以外，数据也是一种供许多用户共享的资源。如何保证数据并发访问的一致性、 有效性是所有数据库必须解决的一个问题，锁冲突也是影响数据库并发访问性能的一个重要因素。从这个角度来说，锁对数据库而言显得尤其重要，也更加复杂。
+
+#### 全局锁
+
+> 全局锁就是对整个数据库实例加锁，加锁后整个实例就处于只读状态，后续的DML的写语句，DDL语句，已经更新操作的事务提交语句都将被阻塞。
+> 其典型的使用场景是做全库的逻辑备份，对所有的表进行锁定，从而获取一致性视图， 保证数据的完整性。
+
+```sql
+#加锁
+mysql> flush tables with read lock;
+#备份数据库
+[root@localhost ~]# mysqldump -uroot -p1234 itcast > itcast.sql
+#解锁
+mysql> unlock tables;
+```
+
+**特点**
+数据库中加全局锁，是一个比较重的操作，存在以下问题:
+
+1. 如果在主库上备份，那么在备份期间都不能执行更新，业务基本上就得停摆。
+2. 如果在从库上备份，那么在备份期间从库不能执行主库同步过来的二进制日志(binlog) ，会导致主从延迟。
+
+在InnoDB引擎中，我们可以在备份时加上参数--single-transaction参数来完成不加锁的一致性数据备份。
+
+```sql
+mysql> mysqldump -- single -transaction -uroot -p123456 itcast > itcast.sql
+```
+
+#### 表级锁
+
+> 表级锁，每次操作锁住整张表。锁定粒度大，发生锁冲突的概率最高，并发度最低。应用在MyISAM、InnoDB 的BDB等存储引擎中。
+
+**表锁**
+
+1. 表共享读锁(read lock)
+2. 表独占写锁(write lock)
+
+语法:
+加锁: lock tables 表名...  read/write。
+释放锁: unlock tables  /客户端断开连接。
+
+```sql
+mysql> lock tables emp read;#所有客户端只能读这张表
+mysql> unlock tables;
+```
+
+```sql
+mysql> lock tables emp write;#只能当前客户端写，其他客户端不能读不能写。
+mysql> unlock tables;
+```
+
+**元数据锁**
+
+> 元数据锁(meta data lock, MDL)
+>
+> MDL加锁过程是系统**自动控制**，无需显式使用，在访问一张表的时候会自动加上。MDL锁主要作用是维护表元数据的数据一致性，在表上有活动事务的时候，不可以对元数据进行写入操作。
+
+在MySQL5.5中引入了MDL，当对一张表进行增删改查的时候，加MDL读锁(共享); 当对表结构进行变更操作的时候，加MDL写锁(排他)。
+
+| 对应SQL                                         | 锁类型                                  | 说明                                              |
+| ----------------------------------------------- | --------------------------------------- | ------------------------------------------------- |
+| lock tables xXX read / write                    | SHARED_READ_ONLY / SHARED_NO_READ_WRITE |                                                   |
+| select、select .. lock in share mode            | SHARED_READ                             | 与SHARED_READ、 SHARED_WRITE兼容，与EXCLUSIVE互斥 |
+| insert、update、 delete、 select ... for update | SHARED_WRITE                            | 与SHARED_READ、 SHARED_WRITE兼容，与EXCLUSIVE互斥 |
+| alter table ..                                  | EXCLUSIVE                               | 与其他的MDL都互斥                                 |
+
+```sql
+#查看加锁情况
+select object_type,object_schema,object_name,lock_type,lock_duration 
+from performance_schema.metadata locks;
+```
+
+**意向锁**
+
+>为了避免DML在执行时，加的行锁与表锁的冲突，在InnoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。
+
+1. 意向共享锁(IS) :由语句select ... lock in share mode添加。与表锁共享锁(read) 兼容，与表锁排它锁(write) 互斥。
+2. 意向排他锁 (IX) :由insert、 update、delete、 select ... for update添加。与表锁共享锁(read) 及排它锁(write) 都互斥。意向锁之间不会互斥。
+
+```sql
+#查看意向锁和行锁情况
+select object_schema,object_name,index_name,lock_type,lock_mode,lock_data
+from performance_schema.data_locks;
+
+#加意向共享锁
+select * from emp where id = 29 lock in share mode;
+
+#自动加意向排它锁
+```
+
+#### 行级锁
+
+> 行级锁，每次操作锁住对应的行数据。锁定粒度最小，发生锁冲突的概率最低，并发度最高。应用在InnoDB存储引擎中。
+
+InnoDB的数据是基于索引组织的，行锁是通过对索引上的索引项加锁来实现的，而不是对记录加的锁。对于行级锁，主要分为以下三类:
+
+**行锁(Record Lock)** 
+
+> 锁定单个行记录的锁，防止其他事务对此行进行update和delete。在RC、RR隔离级别下都支持。
+
+InnoDB实现了以下两种类型的行锁:
+
+1. 共享锁(S) : 允许一个事务去读一行，阻止其他事务获得相同数据集的排它锁。
+2. 排他锁(X) : 允许获取排他锁的事务更新数据，阻止其他事务获得相同数据集的共享锁和排他锁。
+
+| SQL                           | 行锁类型   | 说明                                     |
+| ----------------------------- | ---------- | ---------------------------------------- |
+| INSERT ...                    | 排他锁     | 自动加锁                                 |
+| UPDATE ..                     | 排他锁     | 自动加锁                                 |
+| DELETE ..                     | 排他锁     | 自动加锁                                 |
+| SELECT (正常)                 | 不加任何锁 |                                          |
+| SELECT ... LOCK IN SHARE MODE | 共享锁     | 需要手动在SELECT之后加LOCK IN SHARE MODE |
+| SELECT .. FOR UPDATE          | 排他锁     | 需要手动在SELECT之后加FOR UPDATE         |
+
+默认情况下，InnoDB在REPEATABLE READ事务隔离级别运行，InnoDB使用next-key锁进行搜索和索引扫描，以防止幻读。
+1. 针对唯一索引进行检索时，对已存在的记录进行等值匹配时，将会自动优化为行锁。
+2. InnoDB的行锁是针对于索引加的锁，不通过索引条件检索数据，那么InnoDB将对表中的所有记录加锁，此时就会升级为表锁。
+
+**间隙锁 (Gap Lock)** :
+
+> 锁定索引记录间隙(不含该记录)，确保索引记录间隙不变，防止其他事务在这个间隙进行insert, 产生幻读。在RR隔离级别下都支持。
+
+**临键锁(Next-Key Lock)** :
+
+> 行锁和间隙锁组合，同时锁住数据，并锁住数据前面的间隙Gap。在RR隔离级别下支持。
+
+默认情况下，InnoDB在REPEATABLE READ事务隔离级别运行，InnoDB使用next-key锁进行搜索和索引扫描，以防止幻读。
+
+1. 索引上的等值查询(唯一索引)，给不存在的记录加锁时，优化为间隙锁。
+2. 索引 上的等值查询(普通索引)，向右遍历时最后一一个值不满 足查询需求时，next-key lock退化为间隙锁。
+3. 索引上的范围查询(唯一索引)--会访问到不满足条件的第一个值为 止。
+
+注意: 间隙锁唯一目的是防止其他事务插入间隙。间隙锁可以共存，一个事务采用的间隙锁不会阻止另一个事务在同一间隙上采用间隙锁。
 
