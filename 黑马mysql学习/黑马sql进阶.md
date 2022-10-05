@@ -1336,9 +1336,9 @@ InnoDB实现了以下两种类型的行锁:
 
 行，InnoDB存储引擎数据是按行进行存放的。
 
-### 架构
+#### 架构
 
-#### 内存架构 80%内存
+##### 内存架构 80%内存
 
 **Buffer Pool**：缓冲池是主内存中的一个区域，里面可以缓存磁盘上经常操作的真实数据，在执行增删改查操时，先操作缓冲池中的数据( 若缓冲池没有数据，则从磁盘加载并缓存)，然后再以一定频率刷新到磁盘，从而减少磁盘IO，加快处理速度。
 
@@ -1360,7 +1360,7 @@ Change Buffer的意义是什么?
 innodb_log_buffer_size：缓冲区大小
 innodb_flush__log_at_trx_commit：日志刷新到磁盘时机
 
-#### 磁盘结构
+##### 磁盘结构
 
 **System Tablespace**：系统表空间是更改缓冲区的存储区域。如果表是在系统表空间而不是每个表文件或通用表空间中创建的，它也可能包含表和索引数据。(在MySQL5.x版本中 还包含InnoDB数据字典、undolog等)
 参数: innodb_data_file_path
@@ -1383,7 +1383,7 @@ create TABLESPACE ts_emp add datafile 'ts_emp.ibd' engine = innodb;
 
 **Redo Log**：重做日志，是用来实现事务的持久性。该日志文件由两部分组成：重做日志缓冲(redo log buffer)以及重做日志文件(redo log) ，前者是在内存中，后者在磁盘中。当事务提交之后会把所有修改信息都会存到该日志中，用于在刷新脏页到磁盘时，发生错误时，进行数据恢复使用。
 
-#### 后台线程
+##### 后台线程
 
 **Master Thread**
 核心后台线程，负责调度其他线程，还负责将缓冲池中的数据异步刷新到磁盘中，保持数据的一致性，还包括脏页的刷新、合并插入缓存、undo页的回收。
@@ -1480,3 +1480,58 @@ MVCC+锁保证事务隔离性
 redo log和undo log保证一致性
 
 redo log保证持久性
+
+undo log保证原子性
+
+### MySQL管理
+
+#### 系统数据库
+
+Mysql数据库安装完成后，自带了一下四个数据库，具体作用如下:
+
+| 数据库             | 含义                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| mysql              | 存储MySQL服务器正常运行所需要的各种信息(时区、 主从、用户、权限等) |
+| information_schema | 提供了访问数据库元数据的各种表和视图，包含数据库、表、字段类型及访问权限等 |
+| performance_schema | 为MySQL服务器运行时状态提供了一个底层监控功能，主要用于收集数据库服务器性能参数 |
+| sys                | 包含了一系列方便DBA和开发人员利用performance_ schema 性能数据库进行性能调优和诊断的视图 |
+
+#### 常用工具
+
+```sql
+mysql -uroot -p123456 db01 -e "select * from stu";#常用在shell脚本
+mysql -uroot -p123456 -e 'show databases'
+
+#客户端工具指令
+mysqladmin --help
+
+mysqladmin -uroot -p123456 version
+mysqladmin -uroot -p123456 variables
+mysqladmin -uroot -p123456 create db02
+mysqladmin -uroot -p123456 drop db02
+
+#日志管理
+mysqlbinlog --help
+mysqlbinlog 日志文件名
+
+#对象查找工具
+mysqlshow -uroot -p2143 --count #数据库及表统计信息
+mysqlshow -uroot -p2143 test --count #test数据库表的统计信息
+mysqlshow -uroot -p2143 test book --count #test数据库book表详细信息
+mysqlshow -uroot -p2143 test book id --count #test数据库book表id字段详细信息
+mysqlshow -uroot -p2143 test book id -i #状态信息
+
+#备份或迁移数据库
+mysqldump
+mysqldump -uroot -p1234 db_name [tableName] > db_name.sql #备份整个数据库或表
+mysqldump -uroot -p1234 db_name -t > db_name.sql #加-t 备份文件会小一点，不包含创建表的数据
+mysqldump -uroot -p1234 db_name -d > db_name.sql #加-d 备份文件会小一点，包含创建表的数据，不包含数据
+mysqldump -uroot -p1234 -T /var/lib/mysql-files/ db_name
+
+#客户端数据导入工具
+mysqlimport/source
+mysqlimport -uroot -p1234 db_name /var/lib/mysql-files/ .txt #导入数据文件
+
+mysql > source /root/db_name.sql  #导入sql文件
+```
+
