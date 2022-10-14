@@ -329,3 +329,106 @@ Mycat-web(Mycat-eye)是对mycat-server提供监控服务，功能不局限于对
 Mycat、Mysql监控，监控远程服务器(目前仅限于linux系统)的cpu、内存、网络、磁盘。
 
 Mycat-eye运行过程中需要依赖zookeeper，因此需要先安装zookeeper。
+
+### 读写分离
+
+读写分离，简单地说是把对数据库的读和写操作分开，以对应不同的数据库服务器。主数据库提供写操作，从数据库提供读操作，这样能有效地减轻单台数据库的压力。
+通过MyCat即可轻易实现上述功能，不仅可以支持MySQL，也可以支持Oracle和SQL Server。
+
+MySQL的主从复制，是基于二进制日志(binlog) 实现的。
+
+<img src="images/images_20221012104118.png">
+
+利用MyCat来配置主从分离
+
+schema.xml里面balance参数
+
+| 参数值 | 含义                                                         |
+| ------ | ------------------------------------------------------------ |
+| 0      | 不开启读写分离机制，所有读操作都发送到当前可用的writeHost上  |
+| 1      | 全部的readHost与备用的writeHost都参与select语句的负载均衡(主要针对于双主双从模式) |
+| 2      | 所有的读写操作都随机在writeHost，readHost上分发              |
+| 3      | 所有的读请求随机分发到writeHost对应的readHost上执行，writeHost不负担读压力 |
+
+ #### 一主一从
+
+#### 双主双从
+
+一个主机Master1用于处理所有写请求，它的从机Slave1和另一台主机Master2还有它的从机Slave2负责所有读请求。当Master1主机宕机后，Master2 主机负责写请求，Master1 、Master2 互为备机。
+
+```sql
+#第一个主库配置
+1.修改配置文件/etc/my.cnf
+#mysql服务ID，保证整个集群环境中唯一，取值范围: 1 - 2^32-1，默认为1
+server-id=1
+#指定同步的数据库
+binlog-do-db=db01
+binlog-do-db=db02
+binlog-do-db=db03
+#在作为从数据库的时候，有写入操作也要更新二进制日志文件
+log-slave-updates
+
+2.重启MySQL服务器
+systemctl restart mysqld
+
+
+#第二个主库配置
+3.修改配置文件/etc/my.cnf
+#mysql服务ID，保证整个集群环境中唯一，取值范围: 1 - 2^32-1，默认为1
+server-id=3
+#指定同步的数据库
+binlog-do-db=db01
+binlog-do-db=db02
+binlog-do-db=db03
+#在作为从数据库的时候，有写入操作也要更新二进制日志文件
+log-slave-updates
+
+4.重启MySQL服务器
+systemctl restart mysqld
+
+5.创建用户账号并分配权限
+CREATE USER 'itcast'@'%' IDENTIFIED WITH mysql_native_password BY 'Root@123456';
+#为'itcast'@'%'用户分配主从复制权限
+GRANT REPLICATION SLAVE ON *.* TO 'itcast'@'%';
+
+#第一个从库配置
+6.修改配置文件/etc/my.cnf
+#mysql服务ID，保证整个集群环境中唯一，取值范围: 1 - 2^32-1，默认为1
+server-id=2
+
+7.重启MySQL服务器
+systemctl restart mysqld
+
+#第二个从库配置
+8.修改配置文件/etc/my.cnf
+#mysql服务ID，保证整个集群环境中唯一，取值范围: 1 - 2^32-1，默认为1
+server-id=4
+
+9.重启MySQL服务器
+systemctl restart mysqld
+
+10.在从库中设置关联的主库
+CHANGE REPLICATION SOURCE TO
+SOURCE_HOST='xxx.xxx',SOURCE_USER='xxx',SOURCE_PASSWORD='xxx',SOURCE_LOG_FILE='xxx', SOURCE_LOG_POS=xxx;
+上述是8.0.23中的语法。如果mysql是8.0.23之前的版本，执行如下SQL: 
+CHANGE MASTER TO MASTER_HOT='xxx.xxx.xxx.xxx', MASTER_USER='xxx',MASTER_PASSWORD='xxx', MASTER_LOG_FlLE='xxx',MASTER_LOG_POS=xxx;
+
+11.两台主库之间主从复制
+CHANGE MASTER TO MASTER_HOT='xxx.xxx.xxx.xxx', MASTER_USER='xxx',MASTER_PASSWORD='xxx', MASTER_LOG_FlLE='xxx',MASTER_LOG_POS=xxx;
+```
+
+**双主双从读写分离**
+
+MyCat控制后台数据库的读写分离和负载均衡由schema.xmI文件datahost标签的balance属性控制，通过writeType及switchType来完成失败自动切换的。
+
+**balance="1"**
+
+代表全部的readHost与stand by writeHost参与select语句的负载均衡，简单的说，当双主双从模式(M1->S1, M2->S2, 并且M1与M2互为主备)，正常情况下，M2,S1,S2 都参与select语句的负载均衡;
+**writeType**
+
+0：写操作都转发到第1台writeHost， writeHost1挂了，会切换到writeHost2上;
+1：所有的写操作都随机地发送到配置的writeHost上;
+**switchType**
+
+-1：不自动切换
+1：自动切换
