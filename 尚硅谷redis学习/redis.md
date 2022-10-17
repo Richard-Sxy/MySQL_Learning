@@ -130,7 +130,7 @@ lset k2 0 v3 将第0个位置替换为v3
 
 **Set集合**
 
-Redis的Set是string类型的无序集合。它底层其实是一个value为null的hash表，所以添加，删除，查找的复杂度都是O(1)。
+Redis的Set是string类型的无序无重复元素集合。它底层其实是一个value为null的hash表，所以添加，删除，查找的复杂度都是O(1)。
 
 ```shell
 sadd k1 v1 v2 v3
@@ -243,4 +243,181 @@ geopos k1 shanghai
 geodist k1 shanghai chongqing km 两个位置的直线距离
 georadius k1 110 30 1000 km 一个范围内的地点
 ```
+
+#### Jedis
+
+```xml
+//依赖
+<dependency>
+	<groupId>redis.clients</groupId>
+	<artifactId>jedis</artifactId>
+	<version>3.6.3</version>
+</dependency>
+
+<!-- redis-->
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-data-redis</artifactId>
+	<version>2.4.5</version>
+</dependency>
+<!-- spring2.X 集成redis 所需common-pool2 -->
+<dependency>
+	<groupId>org.apache.commons</groupId>
+	<artifactId>commons-pool2</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.9.6</version>
+</dependency>
+```
+
+```java
+#Redis服务器地址
+spring.redis.host=192 .168.140.136
+#Redis服务器连接端口;
+spring.redis.port=6379
+#Redis数据库索引(默认为0)
+srping.redis.database=0
+#连接超时时间(毫秒)
+spring.redis.timeout=1800000
+#连接池最大连接数(使用负值表示没有限制)
+spring.redis.lettuce.pool.max-active=20
+#最大阻塞等待时间(负数表示没限制)
+spring.redis.lettuce.pool.max-wait=-1
+#连接池中的最大空闲连接↓
+spring.redis.lettuce.pool.max-idle=5
+#连接池中的最小空闲连接
+spring.redis.lettuce.pool.min-idle=0
+```
+
+#### 事务
+
+**Multi** 开启事务 组队
+
+**Exec** 提交事务 提交队列
+
+**Discard** 取消组队
+
+组队阶段出错，整个队列取消
+
+提交队列出错，出错的那个成员取消
+
+**事务冲突**
+
+- 悲观锁
+
+  只要操作就加锁，操作完才释放锁
+
+- 乐观锁
+
+  不会上锁，通过给数据加版本号进行操作
+
+**watch**
+
+在执行multi之前，先执行watch key1 [key2]，可以监视一个(或多个) key ，如果在事务执行之前这个(或这些) key被其他命令所改动，那么事务将被打断。（乐观锁使用）
+
+unwatch取消监视
+
+**Redis事务三特性**
+
+- 单独的隔离操作 
+  事务中的所有命令都会序列化、按顺序地执行。事务在执行的过程中，不会被其他客户端发送来的命令请求所打断。
+- 没有隔离级别的概念 
+  队列中的命令没有提交之前都不会实际被执行，因为事务提交前任何指令都不会被实际执行。
+- 不保证原子性 
+  事务中如果有一条命令执行失败，其后的命令仍然会被执行，没有回滚。
+
+连接池复用连接，解决连接超时问题。
+
+**秒杀超卖问题解决：**
+
+1.watch
+
+2.开启事务
+
+3.提交事务
+
+但是这种情况会出现**库存遗留问题**，商品没卖掉
+
+库存遗留问题解决方法：
+
+**Lua脚本语言**
+
+将复杂的或者多步的redis操作，写为一个脚本，一次提交给redis执行，减少反复连接redis的次数。提升性能。
+LUA脚本是类似redis事务，有一定的原子性，不会被其他命令插队，可以完成一些redis事务性的操作。
+但是注意redis的lua脚本功能，只有在Redis 2.6 以上的版本才可以使用。
+利用lua脚本淘汰用户，解决超卖问题。
+redis 2.6版本以后，通过lua脚本解决争抢问题，实际上是redis利用其单线程的特性，用任务队列的方式解决多任务并发问题。
+
+#### 持久化操作
+
+**RDB（Redis DataBase）**
+
+在指定时间间隔内将内存中的数据集快照写入磁盘。
+
+Redis会单独创建( fork)一个子进程来进行持久化，会先将数据写入到一个临时文件中，待持久化过程都结束了，再用这个临文件替换上次持久化好的文件。整个过程中，主进程是不进行任何IO操作的，这就确保了极高的性能如果需要进行大规模数据的恢复，且对于数据恢复的完整性不是非常敏感，那RDB方式要比AOF方式更加的高效。RDB的**缺点**是最后一次持久化后的数据可能丢失。
+
+**写时复制技术**：需要两倍空间
+
+**AOF（Append Only File）**
+
+以日志的形式来记录每个写操作(增量保存)，将 Redis执行过的所有写指令记录下来(读操作不记录)，只许追加文件但不可以改写文件，redis 启动之初会读取该文件重新构建数据，换言之，redis重启的话就根据日志文件的内容将写指令从前到后执行一次以完成数据的恢复工作。
+
+RDB和AOF同时开启，系统默认取AOF数据
+
+**异常恢复**：可以利用自带命令对损坏的aof文件，进行恢复
+
+AOF可以设置同步频率
+
+#### 主从复制
+
+主机数据更新后根据配置和策略，自动同步到备机的master/slaver机制，Master以写为主, Slave以读为主。
+
+- 读写分离，性能扩展
+- 容灾快速恢复，一台从服务器宕机，可以切换到其他服务器
+
+info replication 命令打印信息
+
+slaveof ip port 配置从服务器
+
+**一主二从**
+
+主挂了，从还是主服务器的从服务器
+
+主从复制步骤：
+
+1、 当从连接上主服务器之后，从服务器向主服务发送进行数据同步消息
+2、主服务器接到从服务器发送过来同步消息，把主服务器数据进行持久化到rdb文件，把rdb文件发送从服务器，从服务器拿到rdb进行读取
+3、每次主服务器进行写操作之后，和从服务器进行数据同步
+
+**薪火相传**
+
+**反客为主**
+
+slaveof no one 把从机变成主机
+
+**哨兵模式（sentinel）**
+
+反客为主的自动版，能够后台监控主机是否故障，如果故障了根据投票数自动将从库转换为主库
+
+sentinel.conf
+
+sentinel montior masterName ip port
+
+启动：redis-sentinel sentinel.conf
+
+**主节点选举规则：**
+
+根据slave-priority=12 值越少优先级越高
+
+偏移量是指获得原主机数据最全的
+
+每个redis实例启动后都会随机生成一个40位的runid
+
+- 选择优先级靠前的
+- 选择偏移量最大的
+- 选择runid最小的
+
+旧主机变为新主机的从节点
 
