@@ -112,6 +112,13 @@ create table new_table_name like old_table_name;
 > 数据操作语言：对数据表的记录进行增、删、改
 
 #### 插入
+>注意：
+> \
+> 插入数据时，指定的字段顺序需要与值的顺序时一一对应的
+> \
+> 字符串和日期型数据应该包含在引号中
+> \
+> 插入的数据大小，应该在字段的规定范围内
 
 ```sql
 #1.给指定字段添加数据
@@ -152,13 +159,19 @@ DELETE FROM employee;#删除该表所有数据
 ### DQL
 
 > 数据查询语言：查询数据库中表的记录
->
+>\
 > 见readme.md
+>
+> 基本查询(DISTINCT,AS)  条件查询(WHERE)  聚合函数(count,max,min,avg,sum)
+> \
+> 分组查询(GROUP BY)  排序查询(ORDER BY ASC DESC)  分页查询(LIMIT)
+> 
+> ex:order by name1 asc, name2 desc;逗号分割
 
 #### 多表查询
 
 > 接readme.md的多表查询
->
+>\
 > 表之间进行笛卡尔积，需要消除无效的笛卡尔积
 
 ##### 多表关系
@@ -486,6 +499,8 @@ select s.name, s.id, c.name from student s, course c, student_course sc where s.
 ### DCL
 
 > 数据库控制语言：管理数据库用户、控制数据库的访问权限
+> 
+> 权限：mysql下的user数据库中
 
 #### 管理用户
 
