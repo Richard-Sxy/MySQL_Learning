@@ -60,7 +60,10 @@ CREATE TABLE tb_user (
 <img src="images/data_type.png">
 
 > 2. 字符串类型
-
+> 
+>    定长字符串和变长字符串(根据内容去计算存储空间，定长效率更高)
+> 
+>
 <img src="images/str_type.png">
 
 > 3. 日期类型
