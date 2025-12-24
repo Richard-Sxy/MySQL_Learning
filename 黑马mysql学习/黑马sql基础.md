@@ -550,6 +550,8 @@ REVOKE ALL ON itcast.* FROM 'xiaomi'@'localhost';
 
 #### 常见约束
 
+>作用于表中字段上的规则，用于限制存储在表中的数据
+> 
 <img src="images/sql_cons.png">
 
 ```sql
@@ -557,7 +559,7 @@ REVOKE ALL ON itcast.* FROM 'xiaomi'@'localhost';
 CREATE TABLE user(
 	id int PRIMARY KEY AUTO_INCREMENT comment '主键',
 	name varchar(10) NOT NULL UNIQUE comment '姓名',
-	age int comment '年龄' CHECK(age > 0 && age <= 120),#此句不生效，可能跟mysql版本有关
+	age int comment '年龄' CHECK(age > 0 && age <= 120),#CHECK 和 comment前后无所谓
 	status char(1) DEFAULT '1' comment '状态',
 	gender char(1) comment '性别'
 ) comment '用户表';
@@ -568,6 +570,8 @@ INSERT INTO user(name,age,status,gender) VALUES ('tom1',19,'1','男'), ('tom2',2
 #### 外键约束
 
 > 外键用来让两张表的数据之间建立连接，从而保证数据的一致性和完整性
+> \
+> 创立外键，与外键相关联的表不能随意删除 
 
 ```sql
 CREATE TABLE 表名(
