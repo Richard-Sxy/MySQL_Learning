@@ -50,6 +50,7 @@ XXX.ibd: xxx代表的是表名，innoDB引擎的每张表都会对应这样一�
 ```sql
 SHOW VARIABLES LIKE 'innodb_file_per_table';#NO
 #我的Mysql版本 5.7.36
+idb2sdi 读取idb文件
 ```
 
 ##### 逻辑存储结构
