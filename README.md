@@ -522,7 +522,7 @@ WHERE emp.salary <= jg.highest_sal AND emp.salary >= jg.lowest_sal;
 
 #### 自连接、非自连接
 
-* 自连接
+* 自连接(同一张表 必须设置不同的别名) 
 
 ```sql
 #查询员工id，员工姓名及其管理者的id和姓名
@@ -536,6 +536,8 @@ WHERE emp.manager_id = mag.employee_id;
 * 内连接
 
 > 内连接：合并同一列的两个以上的表的行，结果集中不包含一个表与另一个表不匹配的行
+> 
+> 隐式内连接  显式内连接
 
 ```sql
 #查询员工的employee_id, department_name
@@ -565,7 +567,7 @@ ON dept.location_id = loc.location_id;#INNER可以省略，完整为INNER JOIN
 >
 > 外连接的分类：左外连接、右外连接、满外连接
 >
-> 1. 左外连接：两个表在连接过程中除了返回满足连接条件的行以外还返回左表中不满足条件的行
+> 1. 左外连接：两个表在连接过程中除了返回满足连接 条件的行以外还返回左表中不满足条件的行
 > 2. 右外连接：两个表在连接过程中除了返回满足连接条件的行以外还返回右表中不满足条件的行
 > 3. 满外连接：返回左外连接、右外连接、内连接的结果
 
@@ -606,9 +608,11 @@ ON emp.department_id = dep.department_id;#OUTER可以省略，会报错
 
 <img src="images/SQL99 7operations.png" alt="image-20220531154418141" style="float:left;" />
 
-> UNION：会执行去重操作
->
-> UNION ALL：不去重
+* 联合查询
+```sql
+UNION:会执行去重操作
+UNION ALL:不去重
+```
 
 * 中间图：内连接
 
@@ -618,7 +622,7 @@ FROM employees emp INNER JOIN departments dept
 ON emp.department_id = dept.department_id
 ```
 
-* 左上图：左外连接
+* 左上图：左外连接(左表 LEFT OUTER JOIN 右表)
 
 ```sql
 SELECT emp.employee_id, dept.department_name
