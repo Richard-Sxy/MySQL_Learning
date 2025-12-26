@@ -105,9 +105,16 @@ xxx.sdi:存储表结构信息
 
 ### 索引
 
->索引(index) 是帮助MySQL高效获取数据的数据结构(有序)。在数据之外，数据库系统还维护着满足特定查找算法的数据结构，这些数据结构以某种方式引用(指向)数据，这样就可以在这些数据结构上实现高级查找算法,这种数据结构就是索引。
+>索引(index) 是帮助MySQL**高效获取数据**的数据结构(有序)。在数据之外，数据库系统还维护着满足特定查找算法的数据结构，这些数据结构以某种方式引用(指向)数据，这样就可以在这些数据结构上实现高级查找算法,这种数据结构就是索引。
 >
 >通俗来说，索引相当于目录，书签，它使人能够快速访问自己想要翻阅的内容。
+
+<img src="images/index1.png">
+<img src="images/index2.png">
+
+#### 特点
+
+1.对于某个字段的查询，数据量大的时候需要遍历，对部分字段添加索引，加速遍历。
 
 #### 优点
 
@@ -199,6 +206,8 @@ Mysql索引数据结构对经典的B+Tree进行了优化。在原B+树的基础�
 | 全文索引 | 全文索引查找的是文本中的关键词，而不是比较索引中的值 | 可以有多个               | FULLTEXT |
 
 根据索引的存储形式进行分类
+\
+对于InnoDB(聚集索引存储了行数据,二级索引存储了主键值)
 
 | 分类                      | 含义                                                       | 特点                |
 | ------------------------- | ---------------------------------------------------------- | ------------------- |
@@ -220,12 +229,12 @@ Mysql索引数据结构对经典的B+Tree进行了优化。在原B+树的基础�
 1. 以下SQL语句，那个执行效率高?为什么?
 
 ```sql
-select * from user where id= 10;#来自用户，其中id=10
+select * from user where id= 10;#来自用户,其中id=10
 
-select * from user where name= 'Arm';#从名称=‘Arm’的用户处选择
+select * from user where name= 'Arm';#从名称='Arm'的用户处选择
 
-#备注: id为主键，name字段创建的有索引;
-#第一句效率高，只需要查询聚集索引，而第二句需要进行回表查询
+#备注: id为主键,name字段创建的有索引;
+#第一句效率高,只需要查询聚集索引,而第二句需要进行回表查询
 ```
 
 2. InnoDB主键索引的B+tree高度为多高呢?
@@ -242,7 +251,7 @@ CREATE [UNIQUE|FULLTEXT] INDEX index_name ON table_name (index_col_name,...);
 
 ```sql
 SHOW INDEX FROM table_name ;
-```
+``` 
 
 **删除索引**
 
@@ -256,6 +265,7 @@ DROP INDEX index_name ON table_name;
 
 MySQL客户端连接成功后，通过show [session|global] status命令可以提供服务器状态信息。通过如下指令，可以查看当前数据库的INSERT、UPDATE、DELETE、 SELECT的访问频次:
 
+增删改查，如果增删改为主，那么SQL优化就没有必要。
 ```sql
 SHOW GLOBAL STATUS LIKE 'Com_______';#哪些指令使用频繁，就优化哪条
 ```
@@ -270,8 +280,8 @@ MySQL的慢查询日志默认没有开启，需要在MySQL的配置文件(/etc/m
 #开启MySQL慢日志查询开关
 slow_query_log=1
 
-#设置慢日志的时间为2秒，SQL 语句执行时间超过2秒，就会视为慢查询，记录慢查询日志
-long_query_time=2
+#设置慢日志的时间为2秒,SQL 语句执行时间超过2秒,就会视为慢查询,记录慢查询日志
+long_query_time=2 
 ```
 
 ##### profile详情
@@ -305,6 +315,8 @@ EXPLAIN SELECT 字段列表 FROM 表名 WHERE 条件;
 ```
 
 EXPLAIN执行计划各字段含义：
+
+重点关注:type possible_key key key_len 
 
 **Id**
 
@@ -346,10 +358,10 @@ MySQL认为必须要执行查询的行数，在innodb引擎的表中，是一个
 
 ##### 索引失效情况
 
-1. 不要在索引列上进行运算操作，否则索引将失效。
+1. 不要在索引列上进行运算操作，否则索引将失效。(函数运算等)
 2. 字符串不加单引号，造成隐式转换故索引将失效。
 3. 如果仅仅是尾部模糊匹配，索引不会失效。如果是头部模糊匹配，索引失效（%工程）。
-
+ 
 4. 用or分割开的条件，如果or前的条件中的列有索引，而后面的列中没有索引，那么涉及的索引都不会被用到。
 
 5. 如果MySQL评估使用索引比全表更慢，则不使用索引（取决于数据分布情况）。
@@ -359,7 +371,7 @@ MySQL认为必须要执行查询的行数，在innodb引擎的表中，是一个
 SQL提示，是优化数据库的一个重要手段，简单来说，就是在SQL语句中加入一些人为的提示来达到优化操作的目的。
 
 ```sql
-#use index:建议索引使用（Mysql不一定接收该建议）
+#use index:建议索引使用(Mysql不一定接收该建议)
 explain select * from tb_ user use index(idx_user_pro) where profession= '软件工程';
 #ignore index:指定忽略索引使用
 explain select * from tb_ user ignore index(idx_user_pro) where profession = '软件工程';
@@ -424,7 +436,7 @@ select count(distinct substring(email, 1, 10)) / count(*) from tb_user;
 start transaction;
 insert into tb_test values(1,'Tom'),(2,'cat'),(3,'jerry');
 commit;
-#建议批量插入，数据500~1000
+#建议批量插入,数据500~1000
 #建议手动提交事务
 #建议主键顺序插入
 ```
@@ -433,15 +445,16 @@ commit;
 
 ```sql
 #大批量数据插入
-#如果一次性需要插入大批量数据，使用insert语句插入性能较低，此时可以使用MySQL数据库提供的load指令进行插
-#入。
+#如果一次性需要插入大批量数据,使用insert语句插入性能较低,此时可以使用MySQL数据库提供的load指令进行插
+#入.
 #操作如下:
-#客户端连接服务端时，加上参数--local-infile
+#客户端连接服务端时,加上参数--local-infile
 mysql --local-infile -U root -p
-#设置全局参数local infile为1，开启从本地加载文件导入数据的开关
+#设置全局参数local infile为1,开启从本地加载文件导入数据的开关
 set global local_infile= 1;
-#执行load指令将准备好的数据，加载到表结构中
+#执行load指令将准备好的数据,加载到表结构中
 load data local infile '/root/sql1.log' into table tb_user fields terminated by ',' lines terminated by '\n';
+load data local infile '地址' into table 表名 fields terminated by '字段分隔' lines terminated by '行的分隔';
 #按主键顺序插入
 ```
 
