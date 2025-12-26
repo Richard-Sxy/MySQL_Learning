@@ -376,7 +376,7 @@ explain select * from tb_ user use index(idx_user_pro) where profession= '软件
 #ignore index:指定忽略索引使用
 explain select * from tb_ user ignore index(idx_user_pro) where profession = '软件工程';
 #force index:强制使用该索引
-explain select * from tb_ user force index(idx_user_pro) where profession= '软件工程;
+explain select * from tb_ user force index(idx_user_pro) where profession= '软件工程';
 ```
 
 ##### 覆盖索引
@@ -465,7 +465,9 @@ load data local infile '地址' into table 表名 fields terminated by '字段�
 
 **页分裂**
 
-主键乱序插入会造成页分裂
+InnoDB要求每个页包含2-N行数据
+\
+主键乱序插入会造成页分裂,左页部分行被存储到另一页，插入另一页，构建链表
 
 **页合并**
 
@@ -473,13 +475,14 @@ load data local infile '地址' into table 表名 fields terminated by '字段�
 
 **主键设计原则**
 
-1. 满足业务需求的情况下，尽量降低主键的长度。
+1. 满足业务需求的情况下，尽量降低主键的长度。(就是主键的存储空间)
 2. 插入数据时，尽量选择顺序插入，选择使用AUTO_INCREMENT自增主键。
 3. 尽量不要使用UUID做主键或者是其他自然主键，如身份证号。
 
 #### order by优化
 
 Using filesort：通过表的索引或全表扫描，读取满足条件的数据行，然后在排序缓冲区sort buffer中完成排序操作，所有不是通过索引直接返回排序结果的排序都叫FileSort排序。
+\
 Using index：通过有序索引顺序扫描直接返回有序数据，这种情况即为using index，不需要额外排序，操作效率高。
 
 ```sql
@@ -487,7 +490,7 @@ create index idx_age_pho on tb_user(age asc, name desc);#默认升序asc
 ```
 
 1. 根据排序字段建立合适的索引，多字段排序时，也遵循最左前缀法则。
-2. 尽量使用覆盖索引。
+2. 尽量使用覆盖索引。(减少select *的使用)
 3. 多字段排序，一个升序一个降序，此时需要注意联合索引在创建时的规则(ASC/DESC)
 4. 如果不可避免的出现filesort，大数据量排序时，可以适当增大排序缓冲区大小sortlbuffer_size(默认256k)。
 
@@ -501,9 +504,13 @@ show variables like 'sort_buffer_size';
 
 #### limit优化
 
+分页操作,越往后后面速度越慢。
+\
 一个常见又非常头疼的问题就是limit 2000000,10，此时需要MySQL排序前2000010记录，仅仅返回2000000 - 2000010的记录，其他记录丢弃，查询排序的代价非常大。
 
 **优化**：覆盖索引 + 子查询
+\
+不支持where id in (select ... limit ...)的格式，但是支持(select ... limit ...)作为表，用别名来覆盖表
 
 #### count优化
 
@@ -521,7 +528,7 @@ count()是一个聚合函数，对于返回的结果集，一行行地判断，�
    InnoDB引擎会遍历整张表，把每一行的主键id值都取出来，返回给服务层。服务层拿到主键后，直接按行进行累加(主键不可能为null)。
 2. count(字段)
    没有not null约束: InnoDB引擎会遍历整张表把每一行的字段值都取出来，返回给服务层，服务层判断是否为null,不为null,计数累加。
-   有not null约束: InnoDB 引擎会遍历整张表把每一行的字 段值都取出来，返回给服务层，直接按行进行累加。
+   有not null约束:  InnoDB引擎会遍历整张表把每一行的字段值都取出来，返回给服务层，直接按行进行累加。
 3. count (1)
    InnoDB引擎遍历整张表，但不取值。服务层对于返回的每一行，放一个数字“1” 进去，直接按行进行累加。
 4. count (*)
@@ -535,13 +542,13 @@ count()是一个聚合函数，对于返回的结果集，一行行地判断，�
 
 有索引加的是行锁
 
-InnoDB的行锁是针对索引加的锁，不是针对记录加的锁，并且该索引不能失效，否则会从行锁升级为表锁。
+InnoDB的行锁是针对索引加的锁，不是针对记录加的锁，并且该索引不能失效，否则会从行锁升级为表锁
 
 尽量根据主键/索引字段进行数据更新
 
 ### 视图
 
->视图(View) 是一种虚拟存在的表。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图的查询中使用的表，并且是在使用视图时动态生成的。
+>视图(View) 是一种**虚拟存在的表**。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图的查询中使用的表，并且是在使用视图时动态生成的。
 >通俗的讲，视图只保存了查询的SQL逻辑，不保存查询结果。所以我们在创建视图的时候，主要的工作就落在创建这条SQL查询语句上。
 
 简单、安全、数据独立（业务代码不变，只需修改视图）。
@@ -559,7 +566,7 @@ create or replace view stu_v_1 as select id,name from emp where id <= 10;
 #查看创建视图语句: SHOW CREATE VIEW视图名称
 show create view stu_v_1
 
-#查看视图数据: SELECT * FROM视图名称（和表操作一样）
+#查看视图数据: SELECT * FROM视图名称(和表操作一样)
 select * from stu_v_1
 
 #3.修改
@@ -575,21 +582,23 @@ drop view if exists stu_v_1;
 
 #### 视图检查选项
 
-当使用WITH CHECK OPTION子句创建视图时，MySQL会通过视图检查正在更改的每个行，例如插入，更新，删除，以使其符合视图的定义。MySQL允许基于另个视图创建视图，它还会检查依赖视图中的规则以保持一 致性。为了确定检查的范围， mysql提供了两个选项: CASCADED和LOCAL，默认值为CASCADED。
+(视图才会有)
 
-CASCADED（级联的）：
+当使用WITH CHECK OPTION子句创建视图时，MySQL会通过视图**检查**正在更改的每个行，例如**插入，更新，删除，**以使其符合视图的定义。MySQL允许基于另个视图创建视图，它还会检查依赖视图中的规则以保持一 致性。为了确定检查的范围， mysql提供了两个选项: CASCADED和LOCAL，默认值为CASCADED。
+
+CASCADED（级联的）: (与之相关的条件都会检查到)
 
 ```sql
 alter view stu_v_1 as select id,name,salary from emp where id <= 10;
 
-insert into stu_v_1(id, name)  values(20, 'dog');#不能插入，没满足条件id <= 10
+insert into stu_v_1(id, name)  values(20, 'dog');#不能插入,没满足条件id <= 10
 
-create or replace view stu_v_2 as select id,name from stu_v_1 where id > 5 with CHECK OPTION;#会检查当前视图所依赖的所有视图是否满足，不管依赖的视图是否加了with check option，因为会传递下去，但只往下传递
+create or replace view stu_v_2 as select id,name from stu_v_1 where id > 5 with CHECK OPTION;#会检查当前视图所依赖的所有视图是否满足,不管依赖的视图是否加了with check option，因为会传递下去,但只往下传递
 
 insert into stu_v_2(id, name)  values(20, 'miqi');
 ```
 
-LOCAL
+LOCAL:(当地的条件)
 
 ```sql
 create view v1 as select id,name from emp where id <= 15;
