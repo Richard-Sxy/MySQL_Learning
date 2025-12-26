@@ -598,7 +598,7 @@ create or replace view stu_v_2 as select id,name from stu_v_1 where id > 5 with 
 insert into stu_v_2(id, name)  values(20, 'miqi');
 ```
 
-LOCAL:(当地的条件)
+LOCAL:(当地的条件和当地上一条条件)
 
 ```sql
 create view v1 as select id,name from emp where id <= 15;
@@ -606,12 +606,12 @@ create view v1 as select id,name from emp where id <= 15;
 create view v2 as select id,name from v1 where id >= 5 with local check option;
 
 insert into v2(id, name)  values(24, 'miqi');
-#不会传递下去，只会递归检查，没有加with check option 就可以不检查
+#不会传递下去,只会递归检查,没有加with check option 就可以不检查
 ```
 
 #### 视图更新 
 
-要使视图可更新，视图中的行与基础表中的行之间必须存在一对一的关系。如果视图包含以下任何一项，则该视图不可更新:
+要使视图可更新，**视图中的行与基础表中的行之间必须存在一对一的关系**。如果视图包含以下任何一项，则该视图不可更新:
 
 1. 聚合函数或窗口函数(SUM()、 MIN()、 MAX()、 COUNT()等)
 2. DISTINCT
