@@ -550,6 +550,7 @@ InnoDB的行锁是针对索引加的锁，不是针对记录加的锁，并且�
 
 >视图(View) 是一种**虚拟存在的表**。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图的查询中使用的表，并且是在使用视图时动态生成的。
 >通俗的讲，视图只保存了查询的SQL逻辑，不保存查询结果。所以我们在创建视图的时候，主要的工作就落在创建这条SQL查询语句上。
+> 简单讲就是可以查询视图，不需要查询数据库了 
 
 简单、安全、数据独立（业务代码不变，只需修改视图）。
 
@@ -668,6 +669,7 @@ end;
 #命令行声明
 #设置命令行sql语句结束符
 delimiter $$
+
 create procedure p1()
 begin
 	select count(*) from emp;
@@ -717,7 +719,7 @@ show global VARIABLES;
 show global VARIABLES like 'auto%';
 
 select @@autocommit;
-select @@global.autocommit;
+select @@global.autocommit;             //@@表示查看某个特定的变量
 
 #设置系统变量
 SET [SESSION|GLOBAL] 系统变量名=值;
@@ -731,7 +733,7 @@ set @@session.autocommit = 0;
 
 >用户定义变量是用户根据需要自己定义的变量，用户变量不用提前声明，在用的时候直接用“@变量名”使用就可以。其作用域为当前连接。
 >
->用户定义的变量无需对其进行声明或初始化，只不过获取到的值为NULL。
+>用户定义的变量无需对其进行声明或初始化，只不过获取到的值为NULL。 (随意select @abc;)
 >
 >如：select @abc
 
@@ -749,6 +751,7 @@ select @count_people
 set @myname = 'itcast';
 set @myage := 10;
 set @mygender := '男', @myhobby := 'java' 
+    建议 := 因为MySQL里面判断也是=
 
 #使用
 SELECT @var_name;
@@ -757,7 +760,7 @@ select @myname, @myage, @mygender, @myhobby;
 
 #### 局部变量
 
->局部变量是根据需要定义的在局部生效的变量，访问之前，需要DECLARE声明。可用作存储过程内的局部变量和输入参数，局部变量的范围是在其内声明的BEGIN ... END块。
+>局部变量是根据需要定义的在局部生效的变量，访问之前，**需要DECLARE声明**。可用作存储过程内的局部变量和输入参数，局部变量的范围是在**其内声明的BEGIN ... END块**。
 
 **声明**
 
@@ -783,6 +786,7 @@ end;
 ```
 
 #### IF
+类似各种语言的基本逻辑 if ... then ... elseif ... then ... else ... end if;
 
 ```sql
 IF 条件1 THEN
@@ -811,6 +815,10 @@ end;
 ```
 
 #### 参数
+类似于各个语言,分为传入(in)和传出(out)参数。
+\
+存储过程名称(in score int, out result varchar(10))
+
 
 | 类型  | 含义                                         | 备注 |
 | ----- | -------------------------------------------- | ---- |
@@ -828,10 +836,10 @@ END;
 
 #列子
 
-#根据传入(in)参数score，判定当前分数对应的分数等级，并返回(out)。
-#score >= 85分，等级为优秀。
-#score >= 60分 且 score < 85分，等级为及格。
-#score < 60分，等级为不及格。
+#根据传入(in)参数score,判定当前分数对应的分数等级,并返回(out)。
+#score >= 85分,等级为优秀.
+#score >= 60分 且 score < 85分,等级为及格。
+#score < 60分,等级为不及格.
 create procedure p4(in score int, out result varchar(10))
 begin
 	if score >= 85 then
@@ -859,6 +867,8 @@ select @score;
 
 #### case
 
+when 之后是条件表达式 then else ... (结束语句) end case;
+
 ```sql
 #语法一
 CASE case_value
@@ -877,11 +887,11 @@ END CASE;
 
  ```sql
 #case
-#根据传入的月份，判定月份所属的季节(要求采用case结构)
-#1-3月份，为第一季度
-#4-6月份，为第二季度
-#7-9月份，为第三季度
-#10-12月份，为第四季度
+#根据传入的月份,判定月份所属的季节(要求采用case结构)
+#1-3月份,为第一季度
+#4-6月份,为第二季度
+#7-9月份,为第三季度
+#10-12月份,为第四季度
 create procedure p6(in month int)
 begin
 
@@ -911,12 +921,12 @@ end;
 
 ```sql
 #具体语法为:
-#先判定条件，如果条件为true，则执行逻辑，否则，不执行逻辑
+#先判定条件,如果条件为true,则执行逻辑,否则,不执行逻辑
 while 条件 DO
 	SQL逻辑..
 END while;
 
-#计算1到n的值，n为传入的参数值
+#计算1到n的值,n为传入的参数值
 
 create procedure p7(in n int)
 begin
@@ -936,13 +946,14 @@ call p7(100);
 > 是有条件的循环控制语句,当满足条件的时候退出循环。具体语法为:
 
 ```sql
-#先执行一次逻辑，然后判定逻辑是否满足，如果满足，则退出。如果不满足，则继续下一次循环
+#先执行一次逻辑,然后判定逻辑是否满足,如果满足,则退出,如果不满足,则继续下一次循环
+#无论如何都会执行一次SQL逻辑
 REPEAT
 	SQL逻辑..
 	UNTIL 条件
 END REPEAT;
 
-#计算1到n的值，n为传入的参数值
+#计算1到n的值,n为传入的参数值
 create procedure p8(in n int)
 begin
 	declare total int default 0;
@@ -962,7 +973,7 @@ end;
 >	ITERATE： 必须用在循环中，作用是跳过当前循环剩下的语句，直接进入下一次循环。
 
 ```sql
-[begin_label:] LOOP
+[begin_label:] LOOP            //名称: LOOP
 	SQL逻辑...
 END LOOP [end_label];
 
@@ -971,7 +982,7 @@ ITERATE label;#直接进入下一次循环
 ```
 
 ```sql
-# 计算从1累加到n的值，n为传入的参数值。
+# 计算从1累加到n的值,n为传入的参数值.
 create procedure p9(in n int)
 begin
 	declare total int default 0;
@@ -987,7 +998,7 @@ begin
 	select total;
 end;
 
-# 计算从1到n之间的偶数累加的值，n为传入的参数值。
+# 计算从1到n之间的偶数累加的值,n为传入的参数值. 
 create procedure p10(in n int)
 begin
 	declare total int default 0;
@@ -1012,6 +1023,7 @@ end;
 #### cursor游标
 
 >游标(CURSOR)是用来存储查询结果集的数据类型,在存储过程和函数中可以使用游标对结果集进行循环的处理。游标的使用包括游标的声明、OPEN、FETCH 和CLOSE，其语法分别如下。
+> 
 
 **声明游标**
 
@@ -1047,7 +1059,7 @@ handler_action
 	CONTINUE: 继续执行当前程序
 	EXIT: 终止执行当前程序
 condition_value
-	SQLSTATE sqlstate_value: 状态码，如02000
+	SQLSTATE sqlstate_value: 状态码,如02000
 	SQLWARNING: 所有以01开头的SQLSTATE代码的简写
 	NOT FOUND: 所有以02开头的SQLSTATE代码的简写
 	SQLEXCEPTION: 所有没有被SQLWARNING或NOT FOUND捕获的SQLSTATE代码的简写
@@ -1087,9 +1099,10 @@ end;
 ### 存储函数
 
 > 存储函数是有返回值的存储过程，存储函数的参数只能是IN类型的。具体语法如下:
+> 但是存储过程可以代替存储函数
 
 ```sql
-CREATE FUNCTION 存储函数名称([参数列表])
+CREATE FUNCTION 存储函数名称([参数列表])     //多了个FUNCTION
 RETURNS type [characteristic ...]
 BEGIN
  	#SQL语句
@@ -1098,8 +1111,8 @@ END;
 
 characteristic说明:
 	DETERMINISTIC: 相同的输入参数总是产生相同的结果
-	NO SQL: 不包含SQL语句。
-	READS SQL DATA: 包含读取数据的语句，但不包含写入数据的语句。
+	NO SQL: 不包含SQL语句.
+	READS SQL DATA: 包含读取数据的语句,但不包含写入数据的语句.
 ```
 
 ```sql
@@ -1138,7 +1151,7 @@ end;
 #创建
 CREATE TRIGGER trigger_name
 	BEFORE/AFTER INSERT/UPDATE/DELETE
-	ON tbl_name FOR EACH ROW #行级触发器
+	ON tbl_name FOR EACH ROW    #行级触发器
 BEGIN
 	trigger_stmt;
 END;
@@ -1149,7 +1162,7 @@ DROP TRIGGER [schema_name.]trigger_name; #如果没有指定schema_name,默认�
 ```
 
 ```sql
-#通过触发器记录表的数据变更日志，将变更日志插入到日志表emp_logs中，包含增加，修改，删除;
+#通过触发器记录表的数据变更日志,将变更日志插入到日志表emp_logs中,包含增加,修改,删除;
 CREATE TABLE `emp_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `operation` varchar(20) NOT NULL COMMENT '操作类型',
