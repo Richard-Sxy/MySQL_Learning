@@ -1211,11 +1211,11 @@ delete from emp where id = 30;
 
 ### 锁
 
->锁是计算机协调多个进程或线程并发访问某一资源的机制。 在数据库中，除传统的计算资源(CPU、 RAM、I/O)的争用以外，数据也是一种供许多用户共享的资源。如何保证数据并发访问的一致性、 有效性是所有数据库必须解决的一个问题，锁冲突也是影响数据库并发访问性能的一个重要因素。从这个角度来说，锁对数据库而言显得尤其重要，也更加复杂。
+>锁是计算机协调**多个进程或线程并发访问某一资源**的机制。 在数据库中，除传统的计算资源(CPU、 RAM、I/O)的争用以外，数据也是一种供许多用户共享的资源。如何保证数据并发访问的一致性、 有效性是所有数据库必须解决的一个问题，锁冲突也是影响数据库并发访问性能的一个重要因素。从这个角度来说，锁对数据库而言显得尤其重要，也更加复杂。
 
 #### 全局锁
 
-> 全局锁就是对整个数据库实例加锁，加锁后整个实例就处于只读状态，后续的DML的写语句，DDL语句，已经更新操作的事务提交语句都将被阻塞。
+> 全局锁就是对整个数据库实例加锁，**加锁后整个实例就处于只读状态**，后续的DML的写语句，DDL语句，已经更新操作的事务**提交语句都将被阻塞**。(阻塞，开放以后就会继续进行命令)
 > 其典型的使用场景是做全库的逻辑备份，对所有的表进行锁定，从而获取一致性视图， 保证数据的完整性。
 
 ```sql
@@ -1236,6 +1236,8 @@ mysql> unlock tables;
 在InnoDB引擎中，我们可以在备份时加上参数--single-transaction参数来完成不加锁的一致性数据备份。
 
 ```sql
+mysql> mysqldump -h (hostname) -uroot -p123456 itcast > itcast.sql
+     加上参数来完成不加锁的一致性数据备份
 mysql> mysqldump -- single -transaction -uroot -p123456 itcast > itcast.sql
 ```
 
@@ -1245,8 +1247,8 @@ mysql> mysqldump -- single -transaction -uroot -p123456 itcast > itcast.sql
 
 **表锁**
 
-1. 表共享读锁(read lock)
-2. 表独占写锁(write lock)
+1. 表共享读锁(read lock)      此客户端可以读不可以写，其他客户端可以读不可以写
+2. 表独占写锁(write lock)     此客户端可以任何操作，其他客户端不可读写
 
 语法:
 加锁: lock tables 表名...  read/write。
@@ -1258,7 +1260,7 @@ mysql> unlock tables;
 ```
 
 ```sql
-mysql> lock tables emp write;#只能当前客户端写，其他客户端不能读不能写。
+mysql> lock tables emp write;#只能当前客户端写,其他客户端不能读不能写.
 mysql> unlock tables;
 ```
 
@@ -1285,7 +1287,7 @@ from performance_schema.metadata locks;
 
 **意向锁**
 
->为了避免DML在执行时，加的行锁与表锁的冲突，在InnoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。
+>为了避免DML在执行时，**加的行锁与表锁的冲突**，在InnoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。
 
 1. 意向共享锁(IS) :由语句select ... lock in share mode添加。与表锁共享锁(read) 兼容，与表锁排它锁(write) 互斥。
 2. 意向排他锁 (IX) :由insert、 update、delete、 select ... for update添加。与表锁共享锁(read) 及排它锁(write) 都互斥。意向锁之间不会互斥。
